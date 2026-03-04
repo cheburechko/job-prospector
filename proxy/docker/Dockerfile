@@ -1,6 +1,6 @@
 FROM ubuntu:24.04
 
-RUN apt-get update && apt-get install -y wget unzip
+RUN apt-get update && apt-get install -y wget unzip netcat-traditional
 
 RUN wget https://github.com/jthomperoo/simple-proxy/releases/download/v1.4.0/simple-proxy_linux_amd64.zip \
     && unzip -d simple-proxy simple-proxy_linux_amd64.zip \
