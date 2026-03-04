@@ -28,10 +28,13 @@ locals {
 
   secret_arn_prefix     = "arn:aws:secretsmanager:eu-central-1:894608133151:secret"
   secret_ssl_cert       = "${local.secret_arn_prefix}:prod/proxy/ssl/cert-GT92t4"
+  secret_ssl_cert_chain = "${local.secret_arn_prefix}:prod/proxy/ssl/cert-chain-kXogL4"
   secret_ssl_key        = "${local.secret_arn_prefix}:prod/proxy/ssl/key-MQGLq7"
   secret_creds          = "${local.secret_arn_prefix}:proxy/creds-C2zEWe"
   secret_creds_username = "${local.secret_creds}:username::"
   secret_creds_password = "${local.secret_creds}:password::"
+
+  route53_zone_id = "Z09770033CPYEFANHENOP"
 }
 
 ################################################################################
@@ -87,6 +90,10 @@ module "ecs" {
               valueFrom = local.secret_ssl_cert
             },
             {
+              name      = "CERT_CHAIN_BLOB"
+              valueFrom = local.secret_ssl_cert_chain
+            },
+            {
               name      = "KEY_BLOB"
               valueFrom = local.secret_ssl_key
             },
@@ -132,6 +139,7 @@ module "ecs" {
 
       task_exec_secret_arns = [
         local.secret_ssl_cert,
+        local.secret_ssl_cert_chain,
         local.secret_ssl_key,
         local.secret_creds,
       ]
@@ -218,6 +226,18 @@ module "nlb" {
     }
   }
   tags = local.tags
+}
+
+resource "aws_route53_record" "proxy" {
+  zone_id = local.route53_zone_id
+  name    = "proxy.aws-is-the-best.com"
+  type    = "A"
+  
+  alias {
+    name    = module.nlb.dns_name
+    zone_id = module.nlb.zone_id
+    evaluate_target_health = true
+  }
 }
 
 module "vpc" {
