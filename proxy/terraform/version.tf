@@ -7,4 +7,11 @@ terraform {
       version = ">= 6.28"
     }
   }
+
+  backend "s3" {
+    bucket         = "aws-is-the-best-terraform-state"
+    key            = "job-prospector/proxy/terraform.tfstate"
+    region         = "eu-central-1"
+    use_lockfile   = true
+  }
 }
