@@ -9,9 +9,9 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "aws-is-the-best-terraform-state"
-    key            = "job-prospector/proxy/terraform.tfstate"
-    region         = "eu-central-1"
-    use_lockfile   = true
+    bucket       = "aws-is-the-best-terraform-state"
+    key          = "job-prospector/proxy/terraform.tfstate"
+    region       = "eu-central-1"
+    use_lockfile = true
   }
 }

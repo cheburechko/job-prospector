@@ -31,8 +31,8 @@ locals {
   secret_ssl_cert_chain = "${local.secret_arn_prefix}:prod/proxy/ssl/cert-chain-kXogL4"
   secret_ssl_key        = "${local.secret_arn_prefix}:prod/proxy/ssl/key-MQGLq7"
   secret_creds          = "${local.secret_arn_prefix}:proxy/creds-C2zEWe"
-  secret_creds_username = "${local.secret_creds}:username::"
-  secret_creds_password = "${local.secret_creds}:password::"
+  secret_creds_username = "${resource.aws_secretsmanager_secret.creds.arn}:username:AWSCURRENT:${resource.aws_secretsmanager_secret_version.creds.version_id}"
+  secret_creds_password = "${resource.aws_secretsmanager_secret.creds.arn}:password:AWSCURRENT:${resource.aws_secretsmanager_secret_version.creds.version_id}"
 
   route53_zone_id = "Z09770033CPYEFANHENOP"
 }
@@ -71,7 +71,7 @@ module "ecs" {
           essential = true
           image     = "894608133151.dkr.ecr.eu-central-1.amazonaws.com/job-prospector/simple-proxy:latest"
 
-          readonlyRootFilesystem  = false
+          readonlyRootFilesystem = false
 
           healthCheck = {
             command = ["CMD-SHELL", "nc -vz localhost ${local.container_port} || exit 1"]
@@ -141,7 +141,7 @@ module "ecs" {
         local.secret_ssl_cert,
         local.secret_ssl_cert_chain,
         local.secret_ssl_key,
-        local.secret_creds,
+        resource.aws_secretsmanager_secret.creds.arn,
       ]
 
       subnet_ids                    = module.vpc.private_subnets
@@ -232,10 +232,10 @@ resource "aws_route53_record" "proxy" {
   zone_id = local.route53_zone_id
   name    = "proxy.aws-is-the-best.com"
   type    = "A"
-  
+
   alias {
-    name    = module.nlb.dns_name
-    zone_id = module.nlb.zone_id
+    name                   = module.nlb.dns_name
+    zone_id                = module.nlb.zone_id
     evaluate_target_health = true
   }
 }
@@ -255,4 +255,36 @@ module "vpc" {
   single_nat_gateway = true
 
   tags = local.tags
+}
+
+import {
+  to = aws_secretsmanager_secret.creds
+  id = local.secret_creds
+}
+
+import {
+  to = aws_secretsmanager_secret_version.creds
+  identity = {
+    secret_id  = local.secret_creds
+    version_id = "ad496269-3fd3-49ea-b4d4-59845b05279d"
+  }
+}
+
+ephemeral "aws_secretsmanager_random_password" "password" {
+  password_length     = 16
+  exclude_punctuation = true
+}
+
+resource "aws_secretsmanager_secret" "creds" {
+  description = "Credentials for authentication in proxy"
+  name        = "proxy/creds"
+}
+
+resource "aws_secretsmanager_secret_version" "creds" {
+  secret_id = resource.aws_secretsmanager_secret.creds.arn
+  secret_string_wo = jsonencode({
+    username = "admin"
+    password = ephemeral.aws_secretsmanager_random_password.password.random_password
+  })
+  secret_string_wo_version = 1
 }
