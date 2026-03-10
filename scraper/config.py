@@ -1,40 +1,29 @@
-import os
-from dataclasses import dataclass
-from pathlib import Path
+from pydantic import AliasChoices, Field, computed_field
+from pydantic_settings import BaseSettings
 
 
-@dataclass
-class ProxyConfig:
-    enabled: bool
+class ProxyConfig(BaseSettings):
+    model_config = {"env_prefix": "PROXY_"}
+
     server: str = ""
-    username: str = ""
+    username: str = Field(
+        default="",
+        validation_alias=AliasChoices("username", "PROXY_USER", "PROXY_USERNAME"),
+    )
     password: str = ""
 
+    @computed_field
+    @property
+    def enabled(self) -> bool:
+        return bool(self.server)
 
-@dataclass
-class ScraperConfig:
-    proxy: ProxyConfig
-    rps: float
+
+class ScraperConfig(BaseSettings):
+    model_config = {"env_prefix": "SCRAPER_"}
+
+    proxy: ProxyConfig = ProxyConfig()
+    rps: float = 2.0
 
 
 def load_config() -> ScraperConfig:
-    server = os.environ.get("PROXY_SERVER", "")
-    username = os.environ.get("PROXY_USER", "")
-    password = os.environ.get("PROXY_PASSWORD", "")
-
-    if not password:
-        secrets_path = Path(".secrets/proxy_password")
-        if secrets_path.exists():
-            password = secrets_path.read_text().strip()
-
-    enabled = bool(server)
-    proxy = ProxyConfig(
-        enabled=enabled,
-        server=server,
-        username=username,
-        password=password,
-    )
-
-    rps = float(os.environ.get("SCRAPER_RPS", "2.0"))
-
-    return ScraperConfig(proxy=proxy, rps=rps)
+    return ScraperConfig()
