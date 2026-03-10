@@ -1,19 +1,19 @@
 import asyncio
-import json
 import sys
 from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-from scraper.config import load_config, load_site_configs
+from scraper.config import load_config
 from scraper.rate_limiter import RateLimiter
+from scraper.storage.base import Storage
+from scraper.storage.json_storage import JsonStorage
 from scraper.template.engine import ScrapingEngine
 
 
-async def main():
+async def run(storage: Storage):
     config = load_config()
-    sites_dir = str(Path(__file__).parent / "sites")
-    site_configs = load_site_configs(sites_dir)
+    site_configs = storage.load_site_configs()
 
     if not site_configs:
         print("No site configs found", file=sys.stderr)
@@ -47,17 +47,17 @@ async def main():
         await context.close()
         await browser.close()
 
-    output = [
-        {
-            "company": job.company,
-            "title": job.title,
-            "location": job.location,
-            "description": job.description,
-        }
-        for job in all_jobs
-    ]
-    print(json.dumps(output, indent=2))
+    storage.save_jobs(all_jobs)
+
+
+def main():
+    scraper_dir = Path(__file__).parent
+    storage = JsonStorage(
+        sites_dir=str(scraper_dir / "sites"),
+        output_path=str(scraper_dir / "output.json"),
+    )
+    asyncio.run(run(storage))
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
