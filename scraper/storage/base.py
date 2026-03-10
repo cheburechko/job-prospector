@@ -1,7 +1,17 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
-from scraper.config import SiteConfig
 from scraper.models.job import Job
+from scraper.models.scenario import CareersPageScenario, JobPageScenario
+
+
+@dataclass
+class SiteConfig:
+    company: str
+    url: str
+    careers_page: CareersPageScenario
+    job_page: JobPageScenario
+    rps: float | None = None
 
 
 class Storage(ABC):

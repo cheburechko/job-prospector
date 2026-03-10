@@ -1,8 +1,7 @@
 import json
-import os
 
-from scraper.config import load_site_configs
 from scraper.models.scenario import CareersPageScenario, JobPageScenario
+from scraper.storage.json_storage import JsonStorage
 
 
 class TestCareersPageScenario:
@@ -55,14 +54,16 @@ class TestSiteConfig:
 
     def test_load_without_rps(self, tmp_path):
         d = self._make_site_json(tmp_path)
-        sites = load_site_configs(str(d))
+        storage = JsonStorage(sites_dir=str(d), output_path="unused")
+        sites = storage.load_site_configs()
         assert len(sites) == 1
         assert sites[0].company == "Acme"
         assert sites[0].rps is None
 
     def test_load_with_rps(self, tmp_path):
         d = self._make_site_json(tmp_path, rps=5.0)
-        sites = load_site_configs(str(d))
+        storage = JsonStorage(sites_dir=str(d), output_path="unused")
+        sites = storage.load_site_configs()
         assert sites[0].rps == 5.0
 
 
