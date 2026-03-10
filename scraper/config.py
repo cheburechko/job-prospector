@@ -20,6 +20,7 @@ class SiteConfig:
     url: str
     careers_page: CareersPageScenario
     job_page: JobPageScenario
+    rps: float | None = None
 
 
 @dataclass
@@ -63,6 +64,7 @@ def load_site_configs(directory: str) -> list[SiteConfig]:
                 url=data["url"],
                 careers_page=CareersPageScenario.from_dict(data["careers_page"]),
                 job_page=JobPageScenario.from_dict(data["job_page"]),
+                rps=data.get("rps"),
             )
         )
     return configs

@@ -19,8 +19,6 @@ async def main():
         print("No site configs found", file=sys.stderr)
         return
 
-    rate_limiter = RateLimiter(rps=config.rps)
-
     async with async_playwright() as p:
         launch_args = {}
         if config.proxy.enabled:
@@ -32,17 +30,19 @@ async def main():
 
         browser = await p.chromium.launch()
         context = await browser.new_context(**launch_args)
-        engine = ScrapingEngine(context, rate_limiter)
 
-        all_jobs = []
-        for site in site_configs:
-            jobs = await engine.scrape_site(
+        async def scrape_one(site):
+            limiter = RateLimiter(rps=site.rps if site.rps is not None else config.rps)
+            engine = ScrapingEngine(context, limiter)
+            return await engine.scrape_site(
                 url=site.url,
                 company=site.company,
                 careers=site.careers_page,
                 job_page=site.job_page,
             )
-            all_jobs.extend(jobs)
+
+        results = await asyncio.gather(*(scrape_one(site) for site in site_configs))
+        all_jobs = [job for jobs in results for job in jobs]
 
         await context.close()
         await browser.close()

@@ -14,7 +14,7 @@ The script will be used to go through a list of given company URLs and collect t
 - The script will be written in Python using playwright library
 - The request shoudl be handled with async
 - Scraping should be done through configurable HTTPS proxy
-- The script should not overload any specific site and should have a restriction on the number of requests per second (RPS) addressed to a site, the RPS setting should be global for all sites.
+- Sites should be scraped in parallel, each site is scraped sequentially with a rate limit. By default site uses the global rate limit, but it can be overriden in the site config
 - Use class Job scraper/models/job.py
 
 ### Scraping configs

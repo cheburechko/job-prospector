@@ -1,3 +1,7 @@
+import json
+import os
+
+from scraper.config import load_site_configs
 from scraper.models.scenario import CareersPageScenario, JobPageScenario
 
 
@@ -27,6 +31,39 @@ class TestCareersPageScenario:
         assert "next_page_selector" not in data
         restored = CareersPageScenario.from_dict(data)
         assert restored.next_page_selector is None
+
+
+class TestSiteConfig:
+    def _make_site_json(self, tmp_path, **extra):
+        data = {
+            "company": "Acme",
+            "url": "https://example.com/jobs",
+            "careers_page": {
+                "job_card_selector": "div.job",
+                "job_link_selector": "a",
+            },
+            "job_page": {
+                "title_selectors": ["h1"],
+                "location_selectors": [".loc"],
+                "description_selectors": [".desc"],
+            },
+            **extra,
+        }
+        path = tmp_path / "acme.json"
+        path.write_text(json.dumps(data))
+        return tmp_path
+
+    def test_load_without_rps(self, tmp_path):
+        d = self._make_site_json(tmp_path)
+        sites = load_site_configs(str(d))
+        assert len(sites) == 1
+        assert sites[0].company == "Acme"
+        assert sites[0].rps is None
+
+    def test_load_with_rps(self, tmp_path):
+        d = self._make_site_json(tmp_path, rps=5.0)
+        sites = load_site_configs(str(d))
+        assert sites[0].rps == 5.0
 
 
 class TestJobPageScenario:
