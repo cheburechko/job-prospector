@@ -1,0 +1,116 @@
+import urllib.parse
+
+from playwright.async_api import BrowserContext
+
+from scraper.models.job import Job
+from scraper.models.scenario import CareersPageScenario, JobPageScenario
+from scraper.rate_limiter import RateLimiter
+
+
+class ScrapingEngine:
+    def __init__(self, context: BrowserContext, rate_limiter: RateLimiter):
+        self.context = context
+        self.rate_limiter = rate_limiter
+
+    async def scrape_site(
+        self,
+        url: str,
+        company: str,
+        careers: CareersPageScenario,
+        job_page: JobPageScenario,
+    ) -> list[Job]:
+        urls = await self._collect_job_urls(url, careers)
+        jobs = []
+        for job_url in urls:
+            job = await self._scrape_job(job_url, company, job_page)
+            if job is not None:
+                jobs.append(job)
+        return jobs
+
+    async def _collect_job_urls(
+        self, url: str, scenario: CareersPageScenario
+    ) -> list[str]:
+        await self.rate_limiter.acquire()
+        page = await self.context.new_page()
+        try:
+            await page.goto(url, wait_until="domcontentloaded")
+            urls: list[str] = []
+            seen: set[str] = set()
+
+            while True:
+                cards = await page.query_selector_all(scenario.job_card_selector)
+                for card in cards:
+                    link = await card.query_selector(scenario.job_link_selector)
+                    if link is None:
+                        continue
+                    href = await link.get_attribute("href")
+                    if href is None:
+                        continue
+                    absolute = urllib.parse.urljoin(url, href)
+                    if absolute not in seen:
+                        seen.add(absolute)
+                        urls.append(absolute)
+
+                if not scenario.next_page_selector:
+                    break
+
+                next_btn = await page.query_selector(scenario.next_page_selector)
+                if next_btn is None:
+                    break
+
+                disabled = await next_btn.get_attribute(
+                    scenario.next_page_disabled_attr
+                )
+                if disabled == scenario.next_page_disabled_value:
+                    break
+
+                await next_btn.click()
+                await page.wait_for_load_state("domcontentloaded")
+
+            return urls
+        finally:
+            await page.close()
+
+    async def _scrape_job(
+        self, url: str, company: str, scenario: JobPageScenario
+    ) -> Job | None:
+        await self.rate_limiter.acquire()
+        page = await self.context.new_page()
+        try:
+            await page.goto(url, wait_until="domcontentloaded")
+
+            title = await self._extract_field(page, scenario.title_selectors)
+            location = await self._extract_field(page, scenario.location_selectors)
+            description = await self._extract_field(
+                page, scenario.description_selectors, use_inner_text=True
+            )
+
+            if not title:
+                return None
+
+            return Job(
+                company=company,
+                title=title,
+                location=location or "",
+                description=description or "",
+            )
+        finally:
+            await page.close()
+
+    async def _extract_field(
+        self, page, selectors: list[str], use_inner_text: bool = False
+    ) -> str | None:
+        for selector in selectors:
+            el = await page.query_selector(selector)
+            if el is None:
+                continue
+            tag = await el.evaluate("e => e.tagName.toLowerCase()")
+            if tag == "meta":
+                value = await el.get_attribute("content")
+            elif use_inner_text:
+                value = await el.inner_text()
+            else:
+                value = await el.text_content()
+            if value:
+                return value.strip()
+        return None

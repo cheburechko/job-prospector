@@ -1,0 +1,16 @@
+{
+  "company": "Wolt",
+  "url": "https://job-boards.greenhouse.io/wolt/",
+  "careers_page": {
+    "job_card_selector": "tr.job-post",
+    "job_link_selector": "a",
+    "next_page_selector": "button.pagination__next",
+    "next_page_disabled_attr": "aria-disabled",
+    "next_page_disabled_value": "true"
+  },
+  "job_page": {
+    "title_selectors": ["h1.section-header", "meta[property=\"og:title\"]"],
+    "location_selectors": [".job__location div", "meta[property=\"og:description\"]"],
+    "description_selectors": [".job__description"]
+  }
+}
