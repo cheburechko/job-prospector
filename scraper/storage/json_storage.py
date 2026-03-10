@@ -1,8 +1,6 @@
-import json
 from pathlib import Path
 
 from scraper.models.job import Job
-from scraper.models.scenario import CareersPageScenario, JobPageScenario
 from scraper.storage.base import SiteConfig, Storage
 
 
@@ -16,26 +14,8 @@ class JsonStorage(Storage):
         dir_path = Path(self.sites_dir)
         for path in sorted(dir_path.glob("*.json")):
             with open(path) as f:
-                data = json.load(f)
-            configs.append(
-                SiteConfig(
-                    company=data["company"],
-                    url=data["url"],
-                    careers_page=CareersPageScenario.from_dict(data["careers_page"]),
-                    job_page=JobPageScenario.from_dict(data["job_page"]),
-                    rps=data.get("rps"),
-                )
-            )
+                configs.append(SiteConfig.from_json(f.read()))
         return configs
 
     def save_jobs(self, jobs: list[Job]) -> None:
-        output = [
-            {
-                "company": job.company,
-                "title": job.title,
-                "location": job.location,
-                "description": job.description,
-            }
-            for job in jobs
-        ]
-        Path(self.output_path).write_text(json.dumps(output, indent=2))
+        Path(self.output_path).write_text(Job.schema().dumps(jobs, indent=2, many=True))

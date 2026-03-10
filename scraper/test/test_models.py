@@ -27,7 +27,7 @@ class TestCareersPageScenario:
             job_link_selector="a.link",
         )
         data = scenario.to_dict()
-        assert "next_page_selector" not in data
+        assert data["next_page_selector"] is None
         restored = CareersPageScenario.from_dict(data)
         assert restored.next_page_selector is None
 

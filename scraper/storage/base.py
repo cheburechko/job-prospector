@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from dataclasses_json import dataclass_json
+
 from scraper.models.job import Job
 from scraper.models.scenario import CareersPageScenario, JobPageScenario
 
 
+@dataclass_json
 @dataclass
 class SiteConfig:
     company: str
