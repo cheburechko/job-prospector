@@ -3,7 +3,7 @@ import sys
 from playwright.async_api import async_playwright
 
 from config import ScraperConfig, load_config
-from rate_limiter import RateLimiter
+from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
 from storage.base import Storage
 from storage.json_storage import JsonStorage
 from template.engine import ScrapingEngine
@@ -27,9 +27,14 @@ async def run(storage: Storage, config: ScraperConfig):
 
         browser = await p.chromium.launch()
         context = await browser.new_context(**launch_args)
+        context.set_default_timeout(config.timeout)
+
+        def _make_limiter(rps: float) -> Limiter:
+            bucket = InMemoryBucket([Rate(int(rps), Duration.SECOND)])
+            return Limiter(bucket)
 
         async def scrape_one(site):
-            limiter = RateLimiter(rps=site.rps if site.rps is not None else config.rps)
+            limiter = _make_limiter(site.rps if site.rps is not None else config.rps)
             engine = ScrapingEngine(context, limiter)
             return await engine.scrape_site(
                 url=site.url,

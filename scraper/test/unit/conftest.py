@@ -2,7 +2,7 @@ import pytest
 import pytest_asyncio
 from playwright.async_api import async_playwright
 
-from rate_limiter import RateLimiter
+from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
 from test.conftest import run_mock_server
 
 
@@ -24,4 +24,5 @@ async def browser_context():
 
 @pytest.fixture
 def rate_limiter():
-    return RateLimiter(rps=1000.0)
+    bucket = InMemoryBucket([Rate(1000, Duration.SECOND)])
+    return Limiter(bucket)

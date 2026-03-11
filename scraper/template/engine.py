@@ -4,11 +4,13 @@ from playwright.async_api import BrowserContext
 
 from models.job import Job
 from models.scenario import CareersPageScenario, JobPageScenario
-from rate_limiter import RateLimiter
+from pyrate_limiter import Limiter
+
+REQUEST = "request"
 
 
 class ScrapingEngine:
-    def __init__(self, context: BrowserContext, rate_limiter: RateLimiter):
+    def __init__(self, context: BrowserContext, rate_limiter: Limiter):
         self.context = context
         self.rate_limiter = rate_limiter
 
@@ -30,7 +32,7 @@ class ScrapingEngine:
     async def _collect_job_urls(
         self, url: str, scenario: CareersPageScenario
     ) -> list[str]:
-        await self.rate_limiter.acquire()
+        await self._limit_request()
         page = await self.context.new_page()
         try:
             await page.goto(url, wait_until="domcontentloaded")
@@ -74,7 +76,7 @@ class ScrapingEngine:
     async def _scrape_job(
         self, url: str, company: str, scenario: JobPageScenario
     ) -> Job | None:
-        await self.rate_limiter.acquire()
+        await self._limit_request()
         page = await self.context.new_page()
         try:
             await page.goto(url, wait_until="domcontentloaded")
@@ -114,3 +116,6 @@ class ScrapingEngine:
             if value:
                 return value.strip()
         return None
+
+    async def _limit_request(self):
+        await self.rate_limiter.try_acquire_async(REQUEST)

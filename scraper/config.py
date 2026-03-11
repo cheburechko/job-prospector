@@ -23,6 +23,7 @@ class ScraperConfig(BaseSettings):
 
     proxy: ProxyConfig = ProxyConfig()
     rps: float = 2.0
+    timeout: int = 5000
     sites_dir: str = "/data/sites"
     output_path: str = "/data/output.json"
 
