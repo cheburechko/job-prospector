@@ -1,36 +1,39 @@
 import re
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pytest
-import pytest_asyncio
 from aiohttp import web
-from playwright.async_api import async_playwright
 
-from rate_limiter import RateLimiter
-
-DATA_DIR = Path(__file__).parent / "data"
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture
-def data_dir():
-    return DATA_DIR
+def fixtures_dir():
+    return FIXTURES_DIR
 
 
-@pytest_asyncio.fixture
-async def mock_server():
-    index_html = DATA_DIR.joinpath("index.htm").read_text()
-    job_html = DATA_DIR.joinpath("job.htm").read_text()
+@asynccontextmanager
+async def run_mock_server(*, bind_host="127.0.0.1", url_host=None):
+    """Start a mock Greenhouse server.
 
-    host = "127.0.0.1"
+    Args:
+        bind_host: Interface to bind on (use "0.0.0.0" to expose to Docker).
+        url_host: Hostname used in rewritten URLs. Defaults to bind_host.
+    """
+    if url_host is None:
+        url_host = bind_host
+
+    index_html = FIXTURES_DIR.joinpath("index.htm").read_text()
+    job_html = FIXTURES_DIR.joinpath("job.htm").read_text()
+
     app = web.Application()
-
-    # Will be set once the server starts and we know the port
     rewritten_index = None
 
-    async def handle_index(request):
+    async def handle_index(_request):
         return web.Response(text=rewritten_index, content_type="text/html")
 
-    async def handle_job(request):
+    async def handle_job(_request):
         return web.Response(text=job_html, content_type="text/html")
 
     app.router.add_get("/", handle_index)
@@ -39,34 +42,19 @@ async def mock_server():
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host, 0)
+    site = web.TCPSite(runner, bind_host, 0)
     await site.start()
 
     port = site._server.sockets[0].getsockname()[1]
-    base_url = f"http://{host}:{port}"
+    base_url = f"http://{url_host}:{port}"
 
-    # Rewrite absolute greenhouse URLs to point to local server
     rewritten_index = re.sub(
         r"https?://job-boards\.greenhouse\.io",
         base_url,
         index_html,
     )
 
-    yield base_url
-
-    await runner.cleanup()
-
-
-@pytest_asyncio.fixture
-async def browser_context():
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        context = await browser.new_context()
-        yield context
-        await context.close()
-        await browser.close()
-
-
-@pytest.fixture
-def rate_limiter():
-    return RateLimiter(rps=1000.0)
+    try:
+        yield base_url
+    finally:
+        await runner.cleanup()
