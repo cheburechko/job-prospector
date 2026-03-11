@@ -23,6 +23,8 @@ class ScraperConfig(BaseSettings):
 
     proxy: ProxyConfig = ProxyConfig()
     rps: float = 2.0
+    sites_dir: str = "/data/sites"
+    output_path: str = "/data/output.json"
 
 
 def load_config() -> ScraperConfig:

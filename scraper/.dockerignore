@@ -1,0 +1,6 @@
+test/
+__pycache__/
+.pytest_cache/
+*.pyc
+docker/
+pyproject.toml

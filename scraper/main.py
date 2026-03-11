@@ -1,18 +1,15 @@
 import asyncio
 import sys
-from pathlib import Path
-
 from playwright.async_api import async_playwright
 
-from config import load_config
+from config import ScraperConfig, load_config
 from rate_limiter import RateLimiter
 from storage.base import Storage
 from storage.json_storage import JsonStorage
 from template.engine import ScrapingEngine
 
 
-async def run(storage: Storage):
-    config = load_config()
+async def run(storage: Storage, config: ScraperConfig):
     site_configs = storage.load_site_configs()
 
     if not site_configs:
@@ -51,12 +48,12 @@ async def run(storage: Storage):
 
 
 def main():
-    scraper_dir = Path(__file__).parent
+    config = load_config()
     storage = JsonStorage(
-        sites_dir=str(scraper_dir / "sites"),
-        output_path=str(scraper_dir / "output.json"),
+        sites_dir=config.sites_dir,
+        output_path=config.output_path,
     )
-    asyncio.run(run(storage))
+    asyncio.run(run(storage, config))
 
 
 if __name__ == "__main__":
