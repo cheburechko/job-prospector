@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from pathlib import Path
@@ -37,7 +38,7 @@ async def mock_target_server():
         yield base_url
 
 
-def _wait_for_container_exit(container, timeout=120):
+async def _wait_for_container_exit(container, timeout=15):
     """Poll the container until it exits or timeout is reached."""
     import docker
 
@@ -48,7 +49,7 @@ def _wait_for_container_exit(container, timeout=120):
         c.reload()
         if c.status in ("exited", "dead"):
             return c.attrs["State"]["ExitCode"]
-        time.sleep(1)
+        await asyncio.sleep(1)
     raise TimeoutError(f"Container did not exit within {timeout}s")
 
 
@@ -71,15 +72,20 @@ async def test_scraper_container(docker_image, mock_target_server, tmp_path):
         .with_volume_mapping(str(tmp_path), "/data/output", "rw")
         .with_env("SCRAPER_SITES_DIR", "/data/sites")
         .with_env("SCRAPER_OUTPUT_PATH", "/data/output/output.json")
+        .with_env("SCRAPER_RPS", "1000")
         .with_kwargs(extra_hosts={"host.docker.internal": "host-gateway"})
     )
 
     with container:
-        exit_code = _wait_for_container_exit(container)
-        logs = container.get_logs()
-        assert exit_code == 0, f"Container exited with code {exit_code}:\n{logs}"
+        exit_code = await _wait_for_container_exit(container)
+        stdout, stderr = container.get_logs()
+        assert exit_code == 0, (
+            f"Container exited with code {exit_code}:\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        )
 
-        assert output_path.exists(), f"output.json was not created. Logs:\n{logs}"
+        assert output_path.exists(), (
+            f"output.json was not created. Logs:\n{stdout}\n{stderr}"
+        )
         jobs = json.loads(output_path.read_text())
         assert len(jobs) > 0, "No jobs were scraped"
         assert jobs[0]["company"] == "Wolt"

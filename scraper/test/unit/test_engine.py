@@ -20,9 +20,7 @@ JOB_SCENARIO = JobPageScenario(
 
 async def test_collect_job_urls(mock_server, browser_context, rate_limiter):
     engine = ScrapingEngine(browser_context, rate_limiter)
-    urls = await engine._collect_job_urls(
-        f"{mock_server}/wolt/", CAREERS_SCENARIO
-    )
+    urls = await engine._collect_job_urls(f"{mock_server}/wolt/", CAREERS_SCENARIO)
     assert len(urls) > 0
     # All URLs should point to the mock server
     for url in urls:
