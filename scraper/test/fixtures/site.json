@@ -1,6 +1,6 @@
 {
-  "company": "Wolt",
-  "url": "https://job-boards.greenhouse.io/wolt/",
+  "company": "Acme Corp",
+  "url": "http://localhost/careers/",
   "careers_page": {
     "job_card_selector": "tr.job-post",
     "job_link_selector": "a",

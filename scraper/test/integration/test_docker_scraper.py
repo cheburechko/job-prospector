@@ -60,9 +60,9 @@ async def test_scraper_container(docker_image, mock_target_server, tmp_path):
     sites_dir = tmp_path / "sites"
     sites_dir.mkdir()
 
-    wolt_config = json.loads(FIXTURES_DIR.joinpath("wolt.json").read_text())
-    wolt_config["url"] = f"{base_url}/wolt/"
-    (sites_dir / "wolt.json").write_text(json.dumps(wolt_config))
+    site_config = json.loads(FIXTURES_DIR.joinpath("site.json").read_text())
+    site_config["url"] = f"{base_url}/careers/"
+    (sites_dir / "site.json").write_text(json.dumps(site_config))
 
     output_path = tmp_path / "output.json"
 
@@ -88,5 +88,5 @@ async def test_scraper_container(docker_image, mock_target_server, tmp_path):
         )
         jobs = json.loads(output_path.read_text())
         assert len(jobs) > 0, "No jobs were scraped"
-        assert jobs[0]["company"] == "Wolt"
-        assert jobs[0]["title"] == "Support Associate"
+        assert jobs[0]["company"] == "Acme Corp"
+        assert jobs[0]["title"] == "Software Engineer"

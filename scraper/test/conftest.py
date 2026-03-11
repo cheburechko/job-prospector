@@ -1,9 +1,9 @@
-import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pytest
 from aiohttp import web
+from jinja2 import Environment, FileSystemLoader
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -15,30 +15,31 @@ def fixtures_dir():
 
 @asynccontextmanager
 async def run_mock_server(*, bind_host="127.0.0.1", url_host=None):
-    """Start a mock Greenhouse server.
+    """Start a mock job-board server.
 
     Args:
         bind_host: Interface to bind on (use "0.0.0.0" to expose to Docker).
-        url_host: Hostname used in rewritten URLs. Defaults to bind_host.
+        url_host: Hostname used in rendered URLs. Defaults to bind_host.
     """
     if url_host is None:
         url_host = bind_host
 
-    index_html = FIXTURES_DIR.joinpath("index.htm").read_text()
-    job_html = FIXTURES_DIR.joinpath("job.htm").read_text()
+    jinja_env = Environment(loader=FileSystemLoader(str(FIXTURES_DIR)))
+    index_template = jinja_env.get_template("index.html.j2")
+    job_html = FIXTURES_DIR.joinpath("job.html.j2").read_text()
 
     app = web.Application()
-    rewritten_index = None
+    rendered_index = None
 
     async def handle_index(_request):
-        return web.Response(text=rewritten_index, content_type="text/html")
+        return web.Response(text=rendered_index, content_type="text/html")
 
     async def handle_job(_request):
         return web.Response(text=job_html, content_type="text/html")
 
     app.router.add_get("/", handle_index)
-    app.router.add_get("/wolt/", handle_index)
-    app.router.add_get("/wolt/jobs/{job_id}", handle_job)
+    app.router.add_get("/careers/", handle_index)
+    app.router.add_get("/careers/jobs/{job_id}", handle_job)
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -48,11 +49,7 @@ async def run_mock_server(*, bind_host="127.0.0.1", url_host=None):
     port = site._server.sockets[0].getsockname()[1]
     base_url = f"http://{url_host}:{port}"
 
-    rewritten_index = re.sub(
-        r"https?://job-boards\.greenhouse\.io",
-        base_url,
-        index_html,
-    )
+    rendered_index = index_template.render(base_url=base_url)
 
     try:
         yield base_url
