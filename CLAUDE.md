@@ -4,4 +4,7 @@ Project layout
 - scraper - script for scraping job sites in Python
 
 ### Scraper
-- Run all tests, including integration tests when verifying that the code works
+- After all edits are done:
+  - `pytest test/` - run all tests, including integration tests when verifying that the code works
+  - `ruff check .` - lint files
+  - `ruff format .` - format files
