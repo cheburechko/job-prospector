@@ -48,9 +48,9 @@ module "ecs" {
   cluster_name = local.name
 
   # Cluster capacity providers
-  cluster_capacity_providers = ["FARGATE"]
+  cluster_capacity_providers = ["FARGATE_SPOT"]
   default_capacity_provider_strategy = {
-    FARGATE = {
+    FARGATE_SPOT = {
       weight = 100
     }
   }
