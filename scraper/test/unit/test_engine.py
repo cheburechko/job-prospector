@@ -5,10 +5,17 @@ from template.engine import ScrapingEngine
 
 pytestmark = pytest.mark.asyncio
 
-# Scenario without pagination for mock tests (mock doesn't support real pagination)
 CAREERS_SCENARIO = CareersPageScenario(
     job_card_selector="tr.job-post",
     job_link_selector="a",
+)
+
+PAGINATED_CAREERS_SCENARIO = CareersPageScenario(
+    job_card_selector="tr.job-post",
+    job_link_selector="a",
+    next_page_selector="button.pagination__next",
+    next_page_disabled_attr="aria-disabled",
+    next_page_disabled_value="true",
 )
 
 JOB_SCENARIO = JobPageScenario(
@@ -54,3 +61,17 @@ async def test_scrape_site_full(mock_server, browser_context, rate_limiter):
     for job in jobs:
         assert job.company == "Acme Corp"
         assert job.title == "Software Engineer"
+
+
+async def test_collect_job_urls_with_pagination(
+    paginated_mock_server, browser_context, rate_limiter
+):
+    engine = ScrapingEngine(browser_context, rate_limiter)
+    urls = await engine._collect_job_urls(
+        f"{paginated_mock_server}/careers/", PAGINATED_CAREERS_SCENARIO
+    )
+    assert len(urls) == 3
+    assert len(set(urls)) == 3, f"Duplicate URLs found: {urls}"
+    assert "/careers/jobs/1001" in urls[0]
+    assert "/careers/jobs/1002" in urls[1]
+    assert "/careers/jobs/1003" in urls[2]

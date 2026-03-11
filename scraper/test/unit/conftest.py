@@ -13,6 +13,12 @@ async def mock_server():
 
 
 @pytest_asyncio.fixture
+async def paginated_mock_server():
+    async with run_mock_server(bind_host="127.0.0.1", page_size=2) as base_url:
+        yield base_url
+
+
+@pytest_asyncio.fixture
 async def browser_context():
     async with async_playwright() as p:
         browser = await p.chromium.launch()

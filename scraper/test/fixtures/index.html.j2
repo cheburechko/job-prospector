@@ -9,33 +9,24 @@
   <div class="job-posts">
     <table>
       <tbody>
+        {% for job in jobs %}
         <tr class="job-post">
           <td class="cell">
-            <a href="{{ base_url }}/careers/jobs/1001">
-              <p class="body body--medium">Software Engineer</p>
-              <p class="body body__secondary body--metadata">Berlin, Germany</p>
+            <a href="{{ base_url }}/careers/jobs/{{ job.id }}">
+              <p class="body body--medium">{{ job.title }}</p>
+              <p class="body body__secondary body--metadata">{{ job.location }}</p>
             </a>
           </td>
         </tr>
-        <tr class="job-post">
-          <td class="cell">
-            <a href="{{ base_url }}/careers/jobs/1002">
-              <p class="body body--medium">Product Manager</p>
-              <p class="body body__secondary body--metadata">Hamburg, Germany</p>
-            </a>
-          </td>
-        </tr>
-        <tr class="job-post">
-          <td class="cell">
-            <a href="{{ base_url }}/careers/jobs/1003">
-              <p class="body body--medium">Data Analyst</p>
-              <p class="body body__secondary body--metadata">Munich, Germany</p>
-            </a>
-          </td>
-        </tr>
+        {% endfor %}
       </tbody>
     </table>
   </div>
+  {% if next_page_url %}
+  <button class="pagination__next" onclick="window.location='{{ next_page_url }}'">Next</button>
+  {% elif show_disabled_next %}
+  <button class="pagination__next" aria-disabled="true">Next</button>
+  {% endif %}
 </main>
 </body>
 </html>
