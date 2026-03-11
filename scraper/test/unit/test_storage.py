@@ -31,8 +31,18 @@ class TestJsonStorage:
         storage = JsonStorage(sites_dir="unused", output_path=output_path)
 
         jobs = [
-            Job(company="Acme", title="Engineer", location="Remote", description="Build things"),
-            Job(company="Acme", title="Designer", location="Berlin", description="Design things"),
+            Job(
+                company="Acme",
+                title="Engineer",
+                location="Remote",
+                description="Build things",
+            ),
+            Job(
+                company="Acme",
+                title="Designer",
+                location="Berlin",
+                description="Design things",
+            ),
         ]
         storage.save_jobs(jobs)
 

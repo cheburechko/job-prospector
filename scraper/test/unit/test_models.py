@@ -70,7 +70,7 @@ class TestSiteConfig:
 class TestJobPageScenario:
     def test_round_trip(self):
         scenario = JobPageScenario(
-            title_selectors=["h1", "meta[property=\"og:title\"]"],
+            title_selectors=["h1", 'meta[property="og:title"]'],
             location_selectors=[".location"],
             description_selectors=[".desc"],
         )
