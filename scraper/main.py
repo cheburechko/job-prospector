@@ -4,11 +4,11 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-from scraper.config import load_config
-from scraper.rate_limiter import RateLimiter
-from scraper.storage.base import Storage
-from scraper.storage.json_storage import JsonStorage
-from scraper.template.engine import ScrapingEngine
+from config import load_config
+from rate_limiter import RateLimiter
+from storage.base import Storage
+from storage.json_storage import JsonStorage
+from template.engine import ScrapingEngine
 
 
 async def run(storage: Storage):

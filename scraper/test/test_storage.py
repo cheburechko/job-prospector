@@ -1,7 +1,7 @@
 import json
 
-from scraper.models.job import Job
-from scraper.storage.json_storage import JsonStorage
+from models.job import Job
+from storage.json_storage import JsonStorage
 
 
 class TestJsonStorage:

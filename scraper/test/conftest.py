@@ -6,7 +6,7 @@ import pytest_asyncio
 from aiohttp import web
 from playwright.async_api import async_playwright
 
-from scraper.rate_limiter import RateLimiter
+from rate_limiter import RateLimiter
 
 DATA_DIR = Path(__file__).parent / "data"
 

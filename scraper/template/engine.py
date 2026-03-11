@@ -2,9 +2,9 @@ import urllib.parse
 
 from playwright.async_api import BrowserContext
 
-from scraper.models.job import Job
-from scraper.models.scenario import CareersPageScenario, JobPageScenario
-from scraper.rate_limiter import RateLimiter
+from models.job import Job
+from models.scenario import CareersPageScenario, JobPageScenario
+from rate_limiter import RateLimiter
 
 
 class ScrapingEngine:

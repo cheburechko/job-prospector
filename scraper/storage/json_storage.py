@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from scraper.models.job import Job
-from scraper.storage.base import SiteConfig, Storage
+from models.job import Job
+from storage.base import SiteConfig, Storage
 
 
 class JsonStorage(Storage):

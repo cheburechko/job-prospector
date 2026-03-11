@@ -1,7 +1,7 @@
 import pytest
 
-from scraper.models.scenario import CareersPageScenario, JobPageScenario
-from scraper.template.engine import ScrapingEngine
+from models.scenario import CareersPageScenario, JobPageScenario
+from template.engine import ScrapingEngine
 
 pytestmark = pytest.mark.asyncio
 

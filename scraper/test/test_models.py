@@ -1,7 +1,7 @@
 import json
 
-from scraper.models.scenario import CareersPageScenario, JobPageScenario
-from scraper.storage.json_storage import JsonStorage
+from models.scenario import CareersPageScenario, JobPageScenario
+from storage.json_storage import JsonStorage
 
 
 class TestCareersPageScenario:
