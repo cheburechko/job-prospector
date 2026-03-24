@@ -3,16 +3,11 @@ import json
 import time
 from pathlib import Path
 
-import boto3
 import pytest
 import pytest_asyncio
 from testcontainers.core.container import DockerContainer, LogMessageWaitStrategy
 
-from storage.dynamodb_storage import (
-    DynamoDbStorage,
-    create_configs_table,
-    create_jobs_table,
-)
+from storage.dynamodb_storage import DynamoDbStorage
 from storage.base import SiteConfig
 from test.conftest import run_mock_server, ALL_JOBS
 
@@ -61,24 +56,17 @@ def dynamodb_storage(dynamodb_container, monkeypatch):
     monkeypatch.setenv("AWS_DEFAULT_REGION", REGION)
     endpoint_url = f"http://{dynamodb_container.get_container_host_ip()}:{dynamodb_container.get_exposed_port(DYNAMODB_PORT)}"
 
-    resource = boto3.resource(
-        "dynamodb",
-        region_name=REGION,
-        endpoint_url=endpoint_url,
-    )
-    create_configs_table(resource, CONFIGS_TABLE)
-    create_jobs_table(resource, JOBS_TABLE)
-
     storage = DynamoDbStorage(
         configs_table=CONFIGS_TABLE,
         jobs_table=JOBS_TABLE,
         region=REGION,
         endpoint_url=endpoint_url,
     )
+    storage.create_tables()
     yield storage
 
-    resource.Table(CONFIGS_TABLE).delete()
-    resource.Table(JOBS_TABLE).delete()
+    storage.dynamodb.Table(CONFIGS_TABLE).delete()
+    storage.dynamodb.Table(JOBS_TABLE).delete()
 
 
 @pytest_asyncio.fixture

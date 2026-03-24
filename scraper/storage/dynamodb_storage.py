@@ -21,22 +21,6 @@ JOBS_TABLE_SCHEMA = {
 }
 
 
-def create_configs_table(dynamodb, table_name: str):
-    dynamodb.create_table(
-        TableName=table_name,
-        **CONFIGS_TABLE_SCHEMA,
-        BillingMode="PAY_PER_REQUEST",
-    )
-
-
-def create_jobs_table(dynamodb, table_name: str):
-    dynamodb.create_table(
-        TableName=table_name,
-        **JOBS_TABLE_SCHEMA,
-        BillingMode="PAY_PER_REQUEST",
-    )
-
-
 class DynamoDbStorage(Storage):
     def __init__(
         self,
@@ -51,6 +35,18 @@ class DynamoDbStorage(Storage):
         self.dynamodb = boto3.resource("dynamodb", **kwargs)
         self.configs_table = self.dynamodb.Table(configs_table)
         self.jobs_table = self.dynamodb.Table(jobs_table)
+
+    def create_tables(self) -> None:
+        self.dynamodb.create_table(
+            TableName=self.configs_table.name,
+            **CONFIGS_TABLE_SCHEMA,
+            BillingMode="PAY_PER_REQUEST",
+        )
+        self.dynamodb.create_table(
+            TableName=self.jobs_table.name,
+            **JOBS_TABLE_SCHEMA,
+            BillingMode="PAY_PER_REQUEST",
+        )
 
     def load_site_configs(self) -> list[SiteConfig]:
         response = self.configs_table.scan()

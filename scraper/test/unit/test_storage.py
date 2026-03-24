@@ -6,11 +6,7 @@ from moto import mock_aws
 
 from models.job import Job
 from storage.base import SiteConfig
-from storage.dynamodb_storage import (
-    DynamoDbStorage,
-    create_configs_table,
-    create_jobs_table,
-)
+from storage.dynamodb_storage import DynamoDbStorage
 from storage.json_storage import JsonStorage
 from models.scenario import CareersPageScenario, JobPageScenario
 
@@ -127,109 +123,58 @@ CONFIGS_TABLE = "scraper-site-configs"
 JOBS_TABLE = "scraper-jobs"
 
 
+@pytest.fixture
+def dynamodb_storage():
+    with mock_aws():
+        storage = DynamoDbStorage(
+            configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
+        )
+        storage.create_tables()
+        yield storage
+        storage.dynamodb.Table(CONFIGS_TABLE).delete()
+        storage.dynamodb.Table(JOBS_TABLE).delete()
+
+
 class TestDynamoDbStorage:
-    @mock_aws
-    def test_load_site_configs(self):
-        dynamodb = boto3.resource("dynamodb", region_name=REGION)
-        create_configs_table(dynamodb, CONFIGS_TABLE)
-        table = dynamodb.Table(CONFIGS_TABLE)
-        table.put_item(
-            Item={
-                "company": "Acme",
-                "url": "https://example.com/jobs",
-                "careers_page": {
-                    "job_card_selector": "div.job",
-                    "job_link_selector": "a",
-                },
-                "job_page": {
-                    "title_selectors": ["h1"],
-                    "location_selectors": [".loc"],
-                    "description_selectors": [".desc"],
-                },
-            }
+    def test_load_site_configs(self, dynamodb_storage, site_config):
+        dynamodb_storage.dynamodb.Table(CONFIGS_TABLE).put_item(
+            Item=site_config.to_dict()
         )
+        configs = dynamodb_storage.load_site_configs()
+        assert configs == [site_config]
 
-        storage = DynamoDbStorage(
-            configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
-        )
-        configs = storage.load_site_configs()
-        assert len(configs) == 1
-        assert configs[0].company == "Acme"
-        assert configs[0].url == "https://example.com/jobs"
-        assert configs[0].careers_page.job_card_selector == "div.job"
+    def test_add_site_config(self, dynamodb_storage, site_config):
+        dynamodb_storage.add_site_config(site_config)
 
-    @mock_aws
-    def test_add_site_config(self, site_config):
-        dynamodb = boto3.resource("dynamodb", region_name=REGION)
-        create_configs_table(dynamodb, CONFIGS_TABLE)
-        create_jobs_table(dynamodb, JOBS_TABLE)
-
-        storage = DynamoDbStorage(
-            configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
-        )
-        storage.add_site_config(site_config)
-
-        items = dynamodb.Table(CONFIGS_TABLE).scan()["Items"]
+        items = dynamodb_storage.dynamodb.Table(CONFIGS_TABLE).scan()["Items"]
         assert items == [site_config.to_dict()]
 
-    @mock_aws
-    def test_delete_site_config(self, site_config):
-        dynamodb = boto3.resource("dynamodb", region_name=REGION)
-        create_configs_table(dynamodb, CONFIGS_TABLE)
-        create_jobs_table(dynamodb, JOBS_TABLE)
+    def test_delete_site_config(self, dynamodb_storage, site_config):
+        dynamodb_storage.add_site_config(site_config)
+        dynamodb_storage.delete_site_config(site_config.company)
 
-        storage = DynamoDbStorage(
-            configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
-        )
-        storage.add_site_config(site_config)
-        storage.delete_site_config(site_config.company)
-
-        items = dynamodb.Table(CONFIGS_TABLE).scan()["Items"]
+        items = dynamodb_storage.dynamodb.Table(CONFIGS_TABLE).scan()["Items"]
         assert len(items) == 0
 
-    @mock_aws
-    def test_add_job(self):
-        dynamodb = boto3.resource("dynamodb", region_name=REGION)
-        create_configs_table(dynamodb, CONFIGS_TABLE)
-        create_jobs_table(dynamodb, JOBS_TABLE)
-
-        storage = DynamoDbStorage(
-            configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
-        )
+    def test_add_job(self, dynamodb_storage):
         job = _make_job()
-        storage.add_job(job)
+        dynamodb_storage.add_job(job)
 
-        items = dynamodb.Table(JOBS_TABLE).scan()["Items"]
+        items = dynamodb_storage.dynamodb.Table(JOBS_TABLE).scan()["Items"]
         assert items == [job.to_dict()]
 
-    @mock_aws
-    def test_delete_job(self):
-        dynamodb = boto3.resource("dynamodb", region_name=REGION)
-        create_configs_table(dynamodb, CONFIGS_TABLE)
-        create_jobs_table(dynamodb, JOBS_TABLE)
+    def test_delete_job(self, dynamodb_storage):
+        dynamodb_storage.add_job(_make_job())
+        dynamodb_storage.delete_job("Acme", "https://example.com/jobs/1")
 
-        storage = DynamoDbStorage(
-            configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
-        )
-        storage.add_job(_make_job())
-        storage.delete_job("Acme", "https://example.com/jobs/1")
-
-        items = dynamodb.Table(JOBS_TABLE).scan()["Items"]
+        items = dynamodb_storage.dynamodb.Table(JOBS_TABLE).scan()["Items"]
         assert len(items) == 0
 
-    @mock_aws
-    def test_list_jobs(self):
-        dynamodb = boto3.resource("dynamodb", region_name=REGION)
-        create_configs_table(dynamodb, CONFIGS_TABLE)
-        create_jobs_table(dynamodb, JOBS_TABLE)
-
-        storage = DynamoDbStorage(
-            configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
-        )
+    def test_list_jobs(self, dynamodb_storage):
         job1 = _make_job(company="Acme")
         job2 = _make_job(company="Other", url="https://other.com/1")
-        storage.add_job(job1)
-        storage.add_job(job2)
+        dynamodb_storage.add_job(job1)
+        dynamodb_storage.add_job(job2)
 
-        jobs = storage.list_jobs(job1.company)
+        jobs = dynamodb_storage.list_jobs(job1.company)
         assert jobs == [job1]
