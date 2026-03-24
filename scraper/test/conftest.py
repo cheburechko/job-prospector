@@ -34,7 +34,8 @@ async def run_mock_server(*, bind_host="127.0.0.1", url_host=None, page_size=Non
 
     jinja_env = Environment(loader=FileSystemLoader(str(FIXTURES_DIR)))
     index_template = jinja_env.get_template("index.html.j2")
-    job_html = FIXTURES_DIR.joinpath("job.html.j2").read_text()
+    job_template = jinja_env.get_template("job.html.j2")
+    jobs_by_id = {job["id"]: job for job in ALL_JOBS}
 
     app = web.Application()
     base_url_ref: list[str] = []
@@ -67,8 +68,13 @@ async def run_mock_server(*, bind_host="127.0.0.1", url_host=None, page_size=Non
         )
         return web.Response(text=rendered, content_type="text/html")
 
-    async def handle_job(_request):
-        return web.Response(text=job_html, content_type="text/html")
+    async def handle_job(request):
+        job_id = request.match_info["job_id"]
+        job = jobs_by_id.get(job_id)
+        if job is None:
+            return web.Response(status=404)
+        rendered = job_template.render(title=job["title"], location=job["location"])
+        return web.Response(text=rendered, content_type="text/html")
 
     app.router.add_get("/", handle_index)
     app.router.add_get("/careers/", handle_index)

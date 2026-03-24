@@ -62,6 +62,7 @@ def main():
             configs_table=config.dynamodb.configs_table,
             jobs_table=config.dynamodb.jobs_table,
             region=config.dynamodb.region,
+            endpoint_url=config.dynamodb.endpoint_url,
         )
     else:
         storage = JsonStorage(

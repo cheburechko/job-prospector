@@ -57,11 +57,11 @@ async def test_scrape_site_full(mock_server, browser_context, rate_limiter):
         careers=CAREERS_SCENARIO,
         job_page=JOB_SCENARIO,
     )
-    assert len(jobs) > 0
-    # All jobs served by mock return the same job.html.j2
+    assert len(jobs) == 3
     for job in jobs:
         assert job.company == "Acme Corp"
-        assert job.title == "Software Engineer"
+    titles = {job.title for job in jobs}
+    assert titles == {"Software Engineer", "Product Manager", "Data Analyst"}
 
 
 async def test_collect_job_urls_with_pagination(

@@ -26,6 +26,7 @@ class DynamoDbConfig(BaseSettings):
     configs_table: str = "scraper-site-configs"
     jobs_table: str = "scraper-jobs"
     region: str = "eu-central-1"
+    endpoint_url: str | None = None
 
 
 class StorageType(StrEnum):

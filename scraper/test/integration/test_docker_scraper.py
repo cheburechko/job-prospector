@@ -3,13 +3,26 @@ import json
 import time
 from pathlib import Path
 
+import boto3
 import pytest
 import pytest_asyncio
-from testcontainers.core.container import DockerContainer
+from testcontainers.core.container import DockerContainer, LogMessageWaitStrategy
 
-from test.conftest import FIXTURES_DIR, run_mock_server
+from storage.dynamodb_storage import (
+    DynamoDbStorage,
+    create_configs_table,
+    create_jobs_table,
+)
+from storage.base import SiteConfig
+from test.conftest import run_mock_server, ALL_JOBS
 
 pytestmark = pytest.mark.integration
+
+CONFIGS_TABLE = "test-configs"
+JOBS_TABLE = "test-jobs"
+REGION = "us-east-1"
+DYNAMODB_PORT = 8000
+HOST_DOCKER_INTERNAL = "host.docker.internal"
 
 
 @pytest.fixture(scope="session")
@@ -29,11 +42,50 @@ def docker_image():
     return tag
 
 
+@pytest.fixture(scope="session")
+def dynamodb_container():
+    container = DockerContainer("amazon/dynamodb-local:latest").with_exposed_ports(
+        DYNAMODB_PORT
+    )
+    with container:
+        container.waiting_for(
+            LogMessageWaitStrategy("CorsParams").with_startup_timeout(30)
+        )
+        yield container
+
+
+@pytest.fixture
+def dynamodb_storage(dynamodb_container, monkeypatch):
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", REGION)
+    endpoint_url = f"http://{dynamodb_container.get_container_host_ip()}:{dynamodb_container.get_exposed_port(DYNAMODB_PORT)}"
+
+    resource = boto3.resource(
+        "dynamodb",
+        region_name=REGION,
+        endpoint_url=endpoint_url,
+    )
+    create_configs_table(resource, CONFIGS_TABLE)
+    create_jobs_table(resource, JOBS_TABLE)
+
+    storage = DynamoDbStorage(
+        configs_table=CONFIGS_TABLE,
+        jobs_table=JOBS_TABLE,
+        region=REGION,
+        endpoint_url=endpoint_url,
+    )
+    yield storage
+
+    resource.Table(CONFIGS_TABLE).delete()
+    resource.Table(JOBS_TABLE).delete()
+
+
 @pytest_asyncio.fixture
 async def mock_target_server():
     """Mock server exposed to Docker containers via host.docker.internal."""
     async with run_mock_server(
-        bind_host="0.0.0.0", url_host="host.docker.internal"
+        bind_host="0.0.0.0", url_host=HOST_DOCKER_INTERNAL
     ) as base_url:
         yield base_url
 
@@ -53,27 +105,31 @@ async def _wait_for_container_exit(container, timeout=15):
     raise TimeoutError(f"Container did not exit within {timeout}s")
 
 
-async def test_scraper_container(docker_image, mock_target_server, tmp_path):
+async def test_scraper_container(
+    docker_image, mock_target_server, dynamodb_container, dynamodb_storage, fixtures_dir
+):
     base_url = mock_target_server
 
-    # Prepare site config with URL pointing to mock server
-    sites_dir = tmp_path / "sites"
-    sites_dir.mkdir()
-
-    site_config = json.loads(FIXTURES_DIR.joinpath("site.json").read_text())
-    site_config["url"] = f"{base_url}/careers/"
-    (sites_dir / "site.json").write_text(json.dumps(site_config))
-
-    output_path = tmp_path / "output.json"
+    # Load site config into DynamoDB
+    site_data = json.loads(fixtures_dir.joinpath("site.json").read_text())
+    site_data["url"] = f"{base_url}/careers/"
+    site_config = SiteConfig.from_dict(site_data)
+    dynamodb_storage.add_site_config(site_config)
 
     container = (
         DockerContainer(docker_image)
-        .with_volume_mapping(str(sites_dir), "/data/sites", "ro")
-        .with_volume_mapping(str(tmp_path), "/data/output", "rw")
-        .with_env("SCRAPER_SITES_DIR", "/data/sites")
-        .with_env("SCRAPER_OUTPUT_PATH", "/data/output/output.json")
+        .with_env("SCRAPER_STORAGE_TYPE", "dynamodb")
+        .with_env("DYNAMODB_CONFIGS_TABLE", CONFIGS_TABLE)
+        .with_env("DYNAMODB_JOBS_TABLE", JOBS_TABLE)
+        .with_env("DYNAMODB_REGION", REGION)
+        .with_env(
+            "DYNAMODB_ENDPOINT_URL",
+            f"http://{HOST_DOCKER_INTERNAL}:{dynamodb_container.get_exposed_port(DYNAMODB_PORT)}",
+        )
+        .with_env("AWS_ACCESS_KEY_ID", "testing")
+        .with_env("AWS_SECRET_ACCESS_KEY", "testing")
         .with_env("SCRAPER_RPS", "1000")
-        .with_kwargs(extra_hosts={"host.docker.internal": "host-gateway"})
+        .with_kwargs(extra_hosts={HOST_DOCKER_INTERNAL: "host-gateway"})
     )
 
     with container:
@@ -83,10 +139,7 @@ async def test_scraper_container(docker_image, mock_target_server, tmp_path):
             f"Container exited with code {exit_code}:\nstdout:\n{stdout}\nstderr:\n{stderr}"
         )
 
-        assert output_path.exists(), (
-            f"output.json was not created. Logs:\n{stdout}\n{stderr}"
-        )
-        jobs = json.loads(output_path.read_text())
-        assert len(jobs) > 0, "No jobs were scraped"
-        assert jobs[0]["company"] == "Acme Corp"
-        assert jobs[0]["title"] == "Software Engineer"
+        jobs = dynamodb_storage.list_jobs("Acme Corp")
+        assert {(job.title, job.location) for job in jobs} == {
+            (job["title"], job["location"]) for job in ALL_JOBS
+        }
