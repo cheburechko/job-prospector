@@ -1,3 +1,5 @@
+from enum import StrEnum
+
 from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings
 
@@ -18,10 +20,25 @@ class ProxyConfig(BaseSettings):
         return bool(self.server)
 
 
+class DynamoDbConfig(BaseSettings):
+    model_config = {"env_prefix": "DYNAMODB_"}
+
+    configs_table: str = "scraper-site-configs"
+    jobs_table: str = "scraper-jobs"
+    region: str = "eu-central-1"
+
+
+class StorageType(StrEnum):
+    JSON = "json"
+    DYNAMODB = "dynamodb"
+
+
 class ScraperConfig(BaseSettings):
     model_config = {"env_prefix": "SCRAPER_"}
 
     proxy: ProxyConfig = ProxyConfig()
+    dynamodb: DynamoDbConfig = DynamoDbConfig()
+    storage_type: StorageType = StorageType.JSON
     rps: float = 2.0
     timeout: int = 5000
     sites_dir: str = "/data/sites"

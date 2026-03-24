@@ -2,7 +2,7 @@ import asyncio
 import sys
 from playwright.async_api import async_playwright
 
-from config import ScraperConfig, load_config
+from config import ScraperConfig, load_config, StorageType
 from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
 from storage.base import Storage
 from storage.json_storage import JsonStorage
@@ -54,10 +54,19 @@ async def run(storage: Storage, config: ScraperConfig):
 
 def main():
     config = load_config()
-    storage = JsonStorage(
-        sites_dir=config.sites_dir,
-        output_path=config.output_path,
-    )
+    if config.storage_type == StorageType.DYNAMODB:
+        from storage.dynamodb_storage import DynamoDbStorage
+
+        storage = DynamoDbStorage(
+            configs_table=config.dynamodb.configs_table,
+            jobs_table=config.dynamodb.jobs_table,
+            region=config.dynamodb.region,
+        )
+    else:
+        storage = JsonStorage(
+            sites_dir=config.sites_dir,
+            output_path=config.output_path,
+        )
     asyncio.run(run(storage, config))
 
 

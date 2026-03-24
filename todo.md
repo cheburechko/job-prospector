@@ -1,0 +1,3 @@
+- Rename task.md to design.md
+- Outline project structure in design.md to save on tokens
+- Add url to job and use it as key

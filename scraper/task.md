@@ -1,5 +1,3 @@
-This is the original task. Do not edit it, write any amendments in separate .md files.
-
 ## Plan
 
 This is the script for scraping jobs off of the tech companies sites. Its goal is to 
@@ -34,10 +32,8 @@ Config should be used by the script for scraping. There may be more configs in t
 ### Storage
 The script should use abstract storage for retrieving scraping configs and storing scraping results. Implementaions:
 - JSON files
-
-In the future the script will use external database as storage.
+- DynamoDB
 
 
 ### Tests
 Write tests in scraper/test. Use files in test/data as test data to for a mock server that would be scraped by the script.
-
