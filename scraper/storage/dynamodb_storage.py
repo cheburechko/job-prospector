@@ -37,8 +37,17 @@ def create_jobs_table(dynamodb, table_name: str):
 
 
 class DynamoDbStorage(Storage):
-    def __init__(self, configs_table: str, jobs_table: str, region: str):
-        self.dynamodb = boto3.resource("dynamodb", region_name=region)
+    def __init__(
+        self,
+        configs_table: str,
+        jobs_table: str,
+        region: str,
+        endpoint_url: str | None = None,
+    ):
+        kwargs = {"region_name": region}
+        if endpoint_url:
+            kwargs["endpoint_url"] = endpoint_url
+        self.dynamodb = boto3.resource("dynamodb", **kwargs)
         self.configs_table = self.dynamodb.Table(configs_table)
         self.jobs_table = self.dynamodb.Table(jobs_table)
 
