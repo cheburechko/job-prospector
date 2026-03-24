@@ -2,10 +2,10 @@ import json
 
 import boto3
 import pytest
-from testcontainers.core.container import DockerContainer
-from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.core.container import DockerContainer, LogMessageWaitStrategy
 
 from models.job import Job
+from models.scenario import CareersPageScenario, JobPageScenario
 from storage.base import SiteConfig
 from storage.dynamodb_storage import (
     DynamoDbStorage,
@@ -28,7 +28,9 @@ def dynamodb_container():
         .with_command("-jar DynamoDBLocal.jar -sharedDb -inMemory")
     )
     with container:
-        wait_for_logs(container, "CorsParams", timeout=30)
+        container.waiting_for(
+            LogMessageWaitStrategy("CorsParams").with_startup_timeout(30)
+        )
         yield container
 
 
@@ -65,26 +67,43 @@ def storage(dynamodb_endpoint, monkeypatch):
     resource.Table(JOBS_TABLE).delete()
 
 
-def test_save_and_scan_jobs(storage):
-    jobs = [
-        Job(
-            company="Acme Corp",
-            url="https://acme.com/jobs/1",
-            title="Software Engineer",
-            location="Remote",
-            description="Build things",
-        ),
-    ]
-    storage.save_jobs(jobs)
+def _make_job(
+    company="Acme Corp", url="https://acme.com/jobs/1", title="Software Engineer"
+):
+    return Job(
+        company=company,
+        url=url,
+        title=title,
+        location="Remote",
+        description="Build things",
+    )
 
-    items = storage.jobs_table.scan()["Items"]
-    assert len(items) == 1
-    item = items[0]
-    assert item["company"] == "Acme Corp"
-    assert item["url"] == "https://acme.com/jobs/1"
-    assert item["title"] == "Software Engineer"
-    assert item["location"] == "Remote"
-    assert item["description"] == "Build things"
+
+def test_add_and_list_jobs(storage):
+    job = _make_job()
+    storage.add_job(job)
+
+    jobs = storage.list_jobs("Acme Corp")
+    assert jobs == [job]
+
+
+def test_add_two_jobs_same_company(storage):
+    job1 = _make_job(url="https://acme.com/jobs/1", title="Engineer")
+    job2 = _make_job(url="https://acme.com/jobs/2", title="Designer")
+    storage.add_job(job1)
+    storage.add_job(job2)
+
+    jobs = storage.list_jobs("Acme Corp")
+    assert sorted(jobs, key=lambda x: x.url) == [job1, job2]
+
+
+def test_delete_job(storage):
+    job = _make_job()
+    storage.add_job(job)
+    storage.delete_job(job.company, job.url)
+
+    jobs = storage.list_jobs("Acme Corp")
+    assert jobs == []
 
 
 def test_load_site_configs(storage, fixtures_dir):
@@ -103,26 +122,34 @@ def test_load_site_configs(storage, fixtures_dir):
     ]
 
 
-def test_sort_key_two_jobs_same_company(storage):
-    jobs = [
-        Job(
-            company="Acme Corp",
-            url="https://acme.com/jobs/1",
-            title="Engineer",
-            location="Remote",
-            description="A",
+@pytest.fixture
+def site_config():
+    return SiteConfig(
+        company="TestCo",
+        url="https://testco.com/careers",
+        careers_page=CareersPageScenario(
+            job_card_selector="div.job",
+            job_link_selector="a",
         ),
-        Job(
-            company="Acme Corp",
-            url="https://acme.com/jobs/2",
-            title="Designer",
-            location="NYC",
-            description="B",
+        job_page=JobPageScenario(
+            title_selectors=["h1"],
+            location_selectors=[".loc"],
+            description_selectors=[".desc"],
         ),
-    ]
-    storage.save_jobs(jobs)
+    )
 
-    items = storage.jobs_table.scan()["Items"]
-    assert len(items) == 2
-    urls = {item["url"] for item in items}
-    assert urls == {"https://acme.com/jobs/1", "https://acme.com/jobs/2"}
+
+def test_add_site_config(storage, site_config):
+    storage.add_site_config(site_config)
+
+    configs = storage.load_site_configs()
+    assert len(configs) == 1
+    assert configs[0] == site_config
+
+
+def test_delete_site_config(storage, site_config):
+    storage.add_site_config(site_config)
+    storage.delete_site_config(site_config.company)
+
+    configs = storage.load_site_configs()
+    assert len(configs) == 0

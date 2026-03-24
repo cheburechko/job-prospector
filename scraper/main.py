@@ -49,7 +49,8 @@ async def run(storage: Storage, config: ScraperConfig):
         await context.close()
         await browser.close()
 
-    storage.save_jobs(all_jobs)
+    for job in all_jobs:
+        storage.add_job(job)
 
 
 def main():

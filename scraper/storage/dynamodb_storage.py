@@ -1,4 +1,5 @@
 import boto3
+from boto3.dynamodb.conditions import Key
 
 from models.job import Job
 from storage.base import SiteConfig, Storage
@@ -55,7 +56,20 @@ class DynamoDbStorage(Storage):
         response = self.configs_table.scan()
         return [SiteConfig.from_dict(item) for item in response["Items"]]
 
-    def save_jobs(self, jobs: list[Job]) -> None:
-        with self.jobs_table.batch_writer() as batch:
-            for job in jobs:
-                batch.put_item(Item=job.to_dict())
+    def add_site_config(self, site_config: SiteConfig) -> None:
+        self.configs_table.put_item(Item=site_config.to_dict())
+
+    def delete_site_config(self, company: str) -> None:
+        self.configs_table.delete_item(Key={"company": company})
+
+    def add_job(self, job: Job) -> None:
+        self.jobs_table.put_item(Item=job.to_dict())
+
+    def delete_job(self, company: str, url: str) -> None:
+        self.jobs_table.delete_item(Key={"company": company, "url": url})
+
+    def list_jobs(self, company: str) -> list[Job]:
+        response = self.jobs_table.query(
+            KeyConditionExpression=Key("company").eq(company)
+        )
+        return [Job.from_dict(item) for item in response["Items"]]
