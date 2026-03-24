@@ -43,6 +43,7 @@ async def test_scrape_job(mock_server, browser_context, rate_limiter):
     )
     assert job is not None
     assert job.company == "Acme Corp"
+    assert job.url == f"{mock_server}/careers/jobs/1001"
     assert job.title == "Software Engineer"
     assert job.location == "Berlin, Germany"
     assert len(job.description) > 0

@@ -11,11 +11,11 @@ CONFIGS_TABLE_SCHEMA = {
 JOBS_TABLE_SCHEMA = {
     "KeySchema": [
         {"AttributeName": "company", "KeyType": "HASH"},
-        {"AttributeName": "title", "KeyType": "RANGE"},
+        {"AttributeName": "url", "KeyType": "RANGE"},
     ],
     "AttributeDefinitions": [
         {"AttributeName": "company", "AttributeType": "S"},
-        {"AttributeName": "title", "AttributeType": "S"},
+        {"AttributeName": "url", "AttributeType": "S"},
     ],
 }
 

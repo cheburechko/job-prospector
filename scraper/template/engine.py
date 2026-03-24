@@ -92,6 +92,7 @@ class ScrapingEngine:
 
             return Job(
                 company=company,
+                url=url,
                 title=title,
                 location=location or "",
                 description=description or "",

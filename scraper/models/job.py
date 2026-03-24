@@ -7,6 +7,7 @@ from dataclasses_json import dataclass_json
 @dataclass
 class Job:
     company: str
+    url: str
     title: str
     location: str
     description: str

@@ -41,12 +41,14 @@ class TestJsonStorage:
         jobs = [
             Job(
                 company="Acme",
+                url="https://example.com/jobs/1",
                 title="Engineer",
                 location="Remote",
                 description="Build things",
             ),
             Job(
                 company="Acme",
+                url="https://example.com/jobs/2",
                 title="Designer",
                 location="Berlin",
                 description="Design things",
@@ -57,6 +59,7 @@ class TestJsonStorage:
         saved = json.loads((tmp_path / "results.json").read_text())
         assert len(saved) == 2
         assert saved[0]["title"] == "Engineer"
+        assert saved[0]["url"] == "https://example.com/jobs/1"
         assert saved[1]["location"] == "Berlin"
 
 
@@ -107,12 +110,14 @@ class TestDynamoDbStorage:
         jobs = [
             Job(
                 company="Acme",
+                url="https://example.com/jobs/1",
                 title="Engineer",
                 location="Remote",
                 description="Build things",
             ),
             Job(
                 company="Acme",
+                url="https://example.com/jobs/2",
                 title="Designer",
                 location="Berlin",
                 description="Design things",
@@ -126,3 +131,5 @@ class TestDynamoDbStorage:
         assert len(items) == 2
         titles = {item["title"] for item in items}
         assert titles == {"Engineer", "Designer"}
+        urls = {item["url"] for item in items}
+        assert urls == {"https://example.com/jobs/1", "https://example.com/jobs/2"}
