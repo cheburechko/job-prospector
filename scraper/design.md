@@ -1,4 +1,4 @@
-## Plan
+## Design
 
 This is the script for scraping jobs off of the tech companies sites. Its goal is to 
 - iterate through all of the job postings available at the given URL, including paging
@@ -13,7 +13,19 @@ The script will be used to go through a list of given company URLs and collect t
 - The request should be handled with async
 - Scraping should be done through configurable HTTPS proxy
 - Sites should be scraped in parallel, each site is scraped sequentially with a rate limit. By default site uses the global rate limit, but it can be overriden in the site config
-- Use class Job scraper/models/job.py
+
+
+## Outline
+- docker/ - docker image for scraper
+- models/ - dataclasses for scraping scenarios and jobs
+- storage/ - storage implementations for storing/retrieving jobs and scenarios
+- template/ - engine for scraping sites
+- test/unit/ - unit tests
+- test/integraion/ - integration tests using testcontainers
+- test/fixtures/ - test data shared by all tests
+- config.py - script configuration
+- main.py - main entrypoint
+
 
 ### Scraping configs
 
@@ -33,7 +45,3 @@ Config should be used by the script for scraping. There may be more configs in t
 The script should use abstract storage for retrieving scraping configs and storing scraping results. Implementaions:
 - JSON files
 - DynamoDB
-
-
-### Tests
-Write tests in scraper/test. Use files in test/data as test data to for a mock server that would be scraped by the script.
