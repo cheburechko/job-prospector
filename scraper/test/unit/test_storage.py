@@ -3,6 +3,7 @@ import json
 import pytest
 from moto import mock_aws
 
+from models.config import DynamoDbConfig, JsonStorageConfig
 from models.job import Job
 from storage.dynamodb_storage import DynamoDbStorage
 from storage.json_storage import JsonStorage
@@ -16,6 +17,10 @@ def _make_job(company="Acme", url="https://example.com/jobs/1", title="Engineer"
         location="Remote",
         description="Build things",
     )
+
+
+def _create_json_storage(sites_dir="unused", output_path="unused"):
+    return JsonStorage(JsonStorageConfig(sites_dir=sites_dir, output_path=output_path))
 
 
 class TestJsonStorage:
@@ -35,13 +40,13 @@ class TestJsonStorage:
         }
         (tmp_path / "acme.json").write_text(json.dumps(site_data))
 
-        storage = JsonStorage(sites_dir=str(tmp_path), output_path="unused")
+        storage = _create_json_storage(sites_dir=str(tmp_path))
         companies = storage.load_companies()
         assert len(companies) == 1
         assert companies[0].company == "Acme"
 
     def test_add_company(self, tmp_path, company):
-        storage = JsonStorage(sites_dir=str(tmp_path), output_path="unused")
+        storage = _create_json_storage(sites_dir=str(tmp_path))
         storage.add_company(company)
 
         path = tmp_path / "Acme.json"
@@ -51,13 +56,13 @@ class TestJsonStorage:
 
     def test_delete_company(self, tmp_path):
         (tmp_path / "Acme.json").write_text("{}")
-        storage = JsonStorage(sites_dir=str(tmp_path), output_path="unused")
+        storage = _create_json_storage(sites_dir=str(tmp_path))
         storage.delete_company("Acme")
         assert not (tmp_path / "Acme.json").exists()
 
     def test_add_job(self, tmp_path):
         output_path = str(tmp_path / "results.json")
-        storage = JsonStorage(sites_dir="unused", output_path=output_path)
+        storage = _create_json_storage(output_path=output_path)
 
         job1 = _make_job()
         job2 = _make_job(url="https://example.com/jobs/2", title="Designer")
@@ -69,7 +74,7 @@ class TestJsonStorage:
 
     def test_delete_job(self, tmp_path):
         output_path = str(tmp_path / "results.json")
-        storage = JsonStorage(sites_dir="unused", output_path=output_path)
+        storage = _create_json_storage(output_path=output_path)
 
         job1 = _make_job()
         job2 = _make_job(url="https://example.com/jobs/2", title="Designer")
@@ -82,7 +87,7 @@ class TestJsonStorage:
 
     def test_list_jobs(self, tmp_path):
         output_path = str(tmp_path / "results.json")
-        storage = JsonStorage(sites_dir="unused", output_path=output_path)
+        storage = _create_json_storage(output_path=output_path)
 
         job1 = _make_job(company="Acme")
         job2 = _make_job(company="Other", url="https://other.com/1")
@@ -94,7 +99,7 @@ class TestJsonStorage:
 
     def test_list_jobs_empty(self, tmp_path):
         output_path = str(tmp_path / "results.json")
-        storage = JsonStorage(sites_dir="unused", output_path=output_path)
+        storage = _create_json_storage(output_path=output_path)
         assert storage.list_jobs("Acme") == []
 
 
@@ -107,7 +112,9 @@ JOBS_TABLE = "scraper-jobs"
 def dynamodb_storage():
     with mock_aws():
         storage = DynamoDbStorage(
-            configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
+            DynamoDbConfig(
+                configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
+            )
         )
         storage.create_tables()
         yield storage

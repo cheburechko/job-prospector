@@ -2,6 +2,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 from models.company import Company
+from models.config import DynamoDbConfig
 from models.job import Job
 from storage.base import Storage
 
@@ -23,19 +24,13 @@ JOBS_TABLE_SCHEMA = {
 
 
 class DynamoDbStorage(Storage):
-    def __init__(
-        self,
-        configs_table: str,
-        jobs_table: str,
-        region: str,
-        endpoint_url: str | None = None,
-    ):
-        kwargs = {"region_name": region}
-        if endpoint_url:
-            kwargs["endpoint_url"] = endpoint_url
+    def __init__(self, config: DynamoDbConfig):
+        kwargs = {"region_name": config.region}
+        if config.endpoint_url:
+            kwargs["endpoint_url"] = config.endpoint_url
         self.dynamodb = boto3.resource("dynamodb", **kwargs)
-        self.configs_table = self.dynamodb.Table(configs_table)
-        self.jobs_table = self.dynamodb.Table(jobs_table)
+        self.configs_table = self.dynamodb.Table(config.configs_table)
+        self.jobs_table = self.dynamodb.Table(config.jobs_table)
 
     def create_tables(self) -> None:
         self.dynamodb.create_table(

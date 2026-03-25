@@ -2,6 +2,7 @@ import pytest
 from moto import mock_aws
 
 from models.company import Company
+from models.config import SqsConfig
 from models.scenario import CareersPageScenario, JobPageScenario
 from queues.sqs_queue import SqsQueue
 
@@ -19,10 +20,12 @@ def sqs_queue():
         queue_url = response["QueueUrl"]
 
         queue = SqsQueue(
-            queue_url=queue_url,
-            region=REGION,
-            wait_time_seconds=0,
-            max_messages=10,
+            SqsConfig(
+                queue_url=queue_url,
+                region=REGION,
+                wait_time_seconds=0,
+                max_messages=10,
+            )
         )
         yield queue
 

@@ -3,25 +3,19 @@ import asyncio
 import boto3
 
 from models.company import Company
+from models.config import SqsConfig
 from queues.base import Queue, QueueMessage
 
 
 class SqsQueue(Queue):
-    def __init__(
-        self,
-        queue_url: str,
-        region: str,
-        wait_time_seconds: int = 20,
-        max_messages: int = 10,
-        endpoint_url: str | None = None,
-    ):
-        kwargs = {"region_name": region}
-        if endpoint_url:
-            kwargs["endpoint_url"] = endpoint_url
+    def __init__(self, config: SqsConfig):
+        kwargs = {"region_name": config.region}
+        if config.endpoint_url:
+            kwargs["endpoint_url"] = config.endpoint_url
         self.client = boto3.client("sqs", **kwargs)
-        self.queue_url = queue_url
-        self.wait_time_seconds = wait_time_seconds
-        self.max_messages = max_messages
+        self.queue_url = config.queue_url
+        self.wait_time_seconds = config.wait_time_seconds
+        self.max_messages = config.max_messages
 
     async def receive_messages(self) -> list[QueueMessage]:
         response = await asyncio.to_thread(

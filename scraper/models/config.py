@@ -20,6 +20,13 @@ class ProxyConfig(BaseSettings):
         return bool(self.server)
 
 
+class JsonStorageConfig(BaseSettings):
+    model_config = {"env_prefix": "SCRAPER_"}
+
+    sites_dir: str = "/data/sites"
+    output_path: str = "/data/output.json"
+
+
 class DynamoDbConfig(BaseSettings):
     model_config = {"env_prefix": "DYNAMODB_"}
 
@@ -48,14 +55,9 @@ class ScraperConfig(BaseSettings):
     model_config = {"env_prefix": "SCRAPER_"}
 
     proxy: ProxyConfig = ProxyConfig()
+    json_storage: JsonStorageConfig = JsonStorageConfig()
     dynamodb: DynamoDbConfig = DynamoDbConfig()
     sqs: SqsConfig = SqsConfig()
     storage_type: StorageType = StorageType.JSON
     rps: float = 2.0
     timeout: int = 5000
-    sites_dir: str = "/data/sites"
-    output_path: str = "/data/output.json"
-
-
-def load_config() -> ScraperConfig:
-    return ScraperConfig()

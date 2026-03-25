@@ -8,6 +8,7 @@ import pytest_asyncio
 from testcontainers.core.container import DockerContainer, LogMessageWaitStrategy
 
 from models.company import Company
+from models.config import DynamoDbConfig, SqsConfig
 from queues.sqs_queue import SqsQueue
 from storage.dynamodb_storage import DynamoDbStorage
 from test.conftest import run_mock_server, ALL_JOBS
@@ -72,10 +73,12 @@ def dynamodb_storage(dynamodb_container, monkeypatch):
     endpoint_url = f"http://{dynamodb_container.get_container_host_ip()}:{dynamodb_container.get_exposed_port(DYNAMODB_PORT)}"
 
     storage = DynamoDbStorage(
-        configs_table=CONFIGS_TABLE,
-        jobs_table=JOBS_TABLE,
-        region=REGION,
-        endpoint_url=endpoint_url,
+        DynamoDbConfig(
+            configs_table=CONFIGS_TABLE,
+            jobs_table=JOBS_TABLE,
+            region=REGION,
+            endpoint_url=endpoint_url,
+        )
     )
     storage.create_tables()
     yield storage
@@ -100,10 +103,12 @@ def sqs_queue(elasticmq_container):
     queue_url = response["QueueUrl"]
 
     queue = SqsQueue(
-        queue_url=queue_url,
-        region=REGION,
-        wait_time_seconds=1,
-        endpoint_url=endpoint_url,
+        SqsConfig(
+            queue_url=queue_url,
+            region=REGION,
+            wait_time_seconds=1,
+            endpoint_url=endpoint_url,
+        )
     )
     yield queue
 

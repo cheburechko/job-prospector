@@ -3,14 +3,15 @@ import itertools
 from pathlib import Path
 
 from models.company import Company
+from models.config import JsonStorageConfig
 from models.job import Job
 from storage.base import Storage
 
 
 class JsonStorage(Storage):
-    def __init__(self, sites_dir: str, output_path: str):
-        self.sites_dir = Path(sites_dir)
-        self.output_path = Path(output_path)
+    def __init__(self, config: JsonStorageConfig):
+        self.sites_dir = Path(config.sites_dir)
+        self.output_path = Path(config.output_path)
         self.jobs = self._get_jobs()
 
     def load_companies(self) -> list[Company]:

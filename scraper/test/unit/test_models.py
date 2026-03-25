@@ -1,7 +1,7 @@
 import json
 
 from models.scenario import CareersPageScenario, JobPageScenario
-from storage.json_storage import JsonStorage
+from test.unit.test_storage import _create_json_storage
 
 
 class TestCareersPageScenario:
@@ -54,7 +54,7 @@ class TestCompany:
 
     def test_load_without_rps(self, tmp_path):
         d = self._make_company_json(tmp_path)
-        storage = JsonStorage(sites_dir=str(d), output_path="unused")
+        storage = _create_json_storage(sites_dir=str(d))
         companies = storage.load_companies()
         assert len(companies) == 1
         assert companies[0].company == "Acme"
@@ -62,7 +62,7 @@ class TestCompany:
 
     def test_load_with_rps(self, tmp_path):
         d = self._make_company_json(tmp_path, rps=5.0)
-        storage = JsonStorage(sites_dir=str(d), output_path="unused")
+        storage = _create_json_storage(sites_dir=str(d))
         companies = storage.load_companies()
         assert companies[0].rps == 5.0
 

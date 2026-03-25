@@ -1,7 +1,7 @@
 import asyncio
 from playwright.async_api import async_playwright
 
-from config import ScraperConfig, load_config, StorageType
+from models.config import ScraperConfig, StorageType
 from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
 from queues.base import Queue
 from queues.sqs_queue import SqsQueue
@@ -58,30 +58,20 @@ async def run(storage: Storage, queue: Queue, config: ScraperConfig):
             await browser.close()
 
 
+def load_config() -> ScraperConfig:
+    return ScraperConfig()
+
+
 def main():
     config = load_config()
     if config.storage_type == StorageType.DYNAMODB:
         from storage.dynamodb_storage import DynamoDbStorage
 
-        storage = DynamoDbStorage(
-            configs_table=config.dynamodb.configs_table,
-            jobs_table=config.dynamodb.jobs_table,
-            region=config.dynamodb.region,
-            endpoint_url=config.dynamodb.endpoint_url,
-        )
+        storage = DynamoDbStorage(config.dynamodb)
     else:
-        storage = JsonStorage(
-            sites_dir=config.sites_dir,
-            output_path=config.output_path,
-        )
+        storage = JsonStorage(config.json_storage)
 
-    queue = SqsQueue(
-        queue_url=config.sqs.queue_url,
-        region=config.sqs.region,
-        wait_time_seconds=config.sqs.wait_time_seconds,
-        max_messages=config.sqs.max_messages,
-        endpoint_url=config.sqs.endpoint_url,
-    )
+    queue = SqsQueue(config.sqs)
 
     asyncio.run(run(storage, queue, config))
 
