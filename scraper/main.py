@@ -1,12 +1,12 @@
 import asyncio
 from playwright.async_api import async_playwright
 
-from models.config import ScraperConfig, StorageType
+from models.config import ScraperConfig
 from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
 from queues.base import Queue
 from queues.sqs_queue import SqsQueue
 from storage.base import Storage
-from storage.json_storage import JsonStorage
+from storage.dynamodb_storage import DynamoDbStorage
 from template.engine import ScrapingEngine
 
 
@@ -64,12 +64,7 @@ def load_config() -> ScraperConfig:
 
 def main():
     config = load_config()
-    if config.storage_type == StorageType.DYNAMODB:
-        from storage.dynamodb_storage import DynamoDbStorage
-
-        storage = DynamoDbStorage(config.dynamodb)
-    else:
-        storage = JsonStorage(config.json_storage)
+    storage = DynamoDbStorage(config.dynamodb)
 
     queue = SqsQueue(config.sqs)
 

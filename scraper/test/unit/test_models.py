@@ -1,7 +1,6 @@
-import json
-
+from models.company import Company
 from models.scenario import CareersPageScenario, JobPageScenario
-from test.helpers import create_json_storage, make_company_json
+from test.helpers import make_company_json
 
 
 class TestCareersPageScenario:
@@ -33,25 +32,16 @@ class TestCareersPageScenario:
 
 
 class TestCompany:
-    def _write_company_json(self, tmp_path, **extra):
-        data = make_company_json(**extra)
-        path = tmp_path / "acme.json"
-        path.write_text(json.dumps(data))
-        return tmp_path
+    def test_from_json_without_rps(self):
+        data = make_company_json()
+        company = Company.from_dict(data)
+        assert company.company == "Acme"
+        assert company.rps is None
 
-    async def test_load_without_rps(self, tmp_path):
-        d = self._write_company_json(tmp_path)
-        storage = create_json_storage(sites_dir=str(d))
-        companies = await storage.load_companies()
-        assert len(companies) == 1
-        assert companies[0].company == "Acme"
-        assert companies[0].rps is None
-
-    async def test_load_with_rps(self, tmp_path):
-        d = self._write_company_json(tmp_path, rps=5.0)
-        storage = create_json_storage(sites_dir=str(d))
-        companies = await storage.load_companies()
-        assert companies[0].rps == 5.0
+    def test_from_json_with_rps(self):
+        data = make_company_json(rps=5.0)
+        company = Company.from_dict(data)
+        assert company.rps == 5.0
 
 
 class TestJobPageScenario:

@@ -45,7 +45,6 @@ Config should be used by the script for scraping. There may be more configs in t
 
 ### Storage
 The script should use abstract storage for retrieving scraping configs and storing scraping results. Implementaions:
-- JSON files
 - DynamoDB
 
 

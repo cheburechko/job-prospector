@@ -2,3 +2,4 @@
 - Try aibotocore or aiboto3
 - Limit inflight in scraper
 - Handle receiving messages from queue and scraping in parallel, like select
+- Remove abstract classes

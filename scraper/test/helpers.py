@@ -1,8 +1,6 @@
 from models.company import Company
-from models.config import JsonStorageConfig
 from models.job import Job
 from models.scenario import CareersPageScenario, JobPageScenario
-from storage.json_storage import JsonStorage
 
 COMPANY_DEFAULTS = {
     "company": "Acme",
@@ -55,7 +53,3 @@ def make_job(
         location=location,
         description=description,
     )
-
-
-def create_json_storage(sites_dir="unused", output_path="unused") -> JsonStorage:
-    return JsonStorage(JsonStorageConfig(sites_dir=sites_dir, output_path=output_path))
