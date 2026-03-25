@@ -10,10 +10,10 @@ from template.engine import ScrapingEngine
 
 
 async def run(storage: Storage, config: ScraperConfig):
-    site_configs = storage.load_site_configs()
+    companies = storage.load_companies()
 
-    if not site_configs:
-        print("No site configs found", file=sys.stderr)
+    if not companies:
+        print("No companies found", file=sys.stderr)
         return
 
     async with async_playwright() as p:
@@ -43,7 +43,7 @@ async def run(storage: Storage, config: ScraperConfig):
                 job_page=site.job_page,
             )
 
-        results = await asyncio.gather(*(scrape_one(site) for site in site_configs))
+        results = await asyncio.gather(*(scrape_one(site) for site in companies))
         all_jobs = [job for jobs in results for job in jobs]
 
         await context.close()

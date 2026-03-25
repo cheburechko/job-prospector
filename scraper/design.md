@@ -45,9 +45,3 @@ Config should be used by the script for scraping. There may be more configs in t
 The script should use abstract storage for retrieving scraping configs and storing scraping results. Implementaions:
 - JSON files
 - DynamoDB
-
-### Checklist
-- After all edits are done:
-  - `pytest test/` - run all tests, including integration tests when verifying that the code works
-  - `ruff check .` - lint files
-  - `ruff format .` - format files

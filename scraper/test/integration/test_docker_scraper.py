@@ -8,7 +8,7 @@ import pytest_asyncio
 from testcontainers.core.container import DockerContainer, LogMessageWaitStrategy
 
 from storage.dynamodb_storage import DynamoDbStorage
-from storage.base import SiteConfig
+from models.company import Company
 from test.conftest import run_mock_server, ALL_JOBS
 
 pytestmark = pytest.mark.integration
@@ -98,11 +98,11 @@ async def test_scraper_container(
 ):
     base_url = mock_target_server
 
-    # Load site config into DynamoDB
+    # Load company config into DynamoDB
     site_data = json.loads(fixtures_dir.joinpath("site.json").read_text())
     site_data["url"] = f"{base_url}/careers/"
-    site_config = SiteConfig.from_dict(site_data)
-    dynamodb_storage.add_site_config(site_config)
+    company = Company.from_dict(site_data)
+    dynamodb_storage.add_company(company)
 
     container = (
         DockerContainer(docker_image)

@@ -32,8 +32,8 @@ class TestCareersPageScenario:
         assert restored.next_page_selector is None
 
 
-class TestSiteConfig:
-    def _make_site_json(self, tmp_path, **extra):
+class TestCompany:
+    def _make_company_json(self, tmp_path, **extra):
         data = {
             "company": "Acme",
             "url": "https://example.com/jobs",
@@ -53,18 +53,18 @@ class TestSiteConfig:
         return tmp_path
 
     def test_load_without_rps(self, tmp_path):
-        d = self._make_site_json(tmp_path)
+        d = self._make_company_json(tmp_path)
         storage = JsonStorage(sites_dir=str(d), output_path="unused")
-        sites = storage.load_site_configs()
-        assert len(sites) == 1
-        assert sites[0].company == "Acme"
-        assert sites[0].rps is None
+        companies = storage.load_companies()
+        assert len(companies) == 1
+        assert companies[0].company == "Acme"
+        assert companies[0].rps is None
 
     def test_load_with_rps(self, tmp_path):
-        d = self._make_site_json(tmp_path, rps=5.0)
+        d = self._make_company_json(tmp_path, rps=5.0)
         storage = JsonStorage(sites_dir=str(d), output_path="unused")
-        sites = storage.load_site_configs()
-        assert sites[0].rps == 5.0
+        companies = storage.load_companies()
+        assert companies[0].rps == 5.0
 
 
 class TestJobPageScenario:

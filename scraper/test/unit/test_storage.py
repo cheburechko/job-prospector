@@ -3,16 +3,16 @@ import json
 import pytest
 from moto import mock_aws
 
+from models.company import Company
 from models.job import Job
-from storage.base import SiteConfig
 from storage.dynamodb_storage import DynamoDbStorage
 from storage.json_storage import JsonStorage
 from models.scenario import CareersPageScenario, JobPageScenario
 
 
 @pytest.fixture
-def site_config():
-    return SiteConfig(
+def company():
+    return Company(
         company="Acme",
         url="https://example.com/jobs",
         careers_page=CareersPageScenario(
@@ -38,7 +38,7 @@ def _make_job(company="Acme", url="https://example.com/jobs/1", title="Engineer"
 
 
 class TestJsonStorage:
-    def test_load_site_configs(self, tmp_path):
+    def test_load_companies(self, tmp_path):
         site_data = {
             "company": "Acme",
             "url": "https://example.com/jobs",
@@ -55,23 +55,23 @@ class TestJsonStorage:
         (tmp_path / "acme.json").write_text(json.dumps(site_data))
 
         storage = JsonStorage(sites_dir=str(tmp_path), output_path="unused")
-        configs = storage.load_site_configs()
-        assert len(configs) == 1
-        assert configs[0].company == "Acme"
+        companies = storage.load_companies()
+        assert len(companies) == 1
+        assert companies[0].company == "Acme"
 
-    def test_add_site_config(self, tmp_path, site_config):
+    def test_add_company(self, tmp_path, company):
         storage = JsonStorage(sites_dir=str(tmp_path), output_path="unused")
-        storage.add_site_config(site_config)
+        storage.add_company(company)
 
         path = tmp_path / "Acme.json"
         assert path.exists()
         data = json.loads(path.read_text())
-        assert data == site_config.to_dict()
+        assert data == company.to_dict()
 
-    def test_delete_site_config(self, tmp_path):
+    def test_delete_company(self, tmp_path):
         (tmp_path / "Acme.json").write_text("{}")
         storage = JsonStorage(sites_dir=str(tmp_path), output_path="unused")
-        storage.delete_site_config("Acme")
+        storage.delete_company("Acme")
         assert not (tmp_path / "Acme.json").exists()
 
     def test_add_job(self, tmp_path):
@@ -135,22 +135,20 @@ def dynamodb_storage():
 
 
 class TestDynamoDbStorage:
-    def test_load_site_configs(self, dynamodb_storage, site_config):
-        dynamodb_storage.dynamodb.Table(CONFIGS_TABLE).put_item(
-            Item=site_config.to_dict()
-        )
-        configs = dynamodb_storage.load_site_configs()
-        assert configs == [site_config]
+    def test_load_companies(self, dynamodb_storage, company):
+        dynamodb_storage.dynamodb.Table(CONFIGS_TABLE).put_item(Item=company.to_dict())
+        companies = dynamodb_storage.load_companies()
+        assert companies == [company]
 
-    def test_add_site_config(self, dynamodb_storage, site_config):
-        dynamodb_storage.add_site_config(site_config)
+    def test_add_company(self, dynamodb_storage, company):
+        dynamodb_storage.add_company(company)
 
         items = dynamodb_storage.dynamodb.Table(CONFIGS_TABLE).scan()["Items"]
-        assert items == [site_config.to_dict()]
+        assert items == [company.to_dict()]
 
-    def test_delete_site_config(self, dynamodb_storage, site_config):
-        dynamodb_storage.add_site_config(site_config)
-        dynamodb_storage.delete_site_config(site_config.company)
+    def test_delete_company(self, dynamodb_storage, company):
+        dynamodb_storage.add_company(company)
+        dynamodb_storage.delete_company(company.company)
 
         items = dynamodb_storage.dynamodb.Table(CONFIGS_TABLE).scan()["Items"]
         assert len(items) == 0

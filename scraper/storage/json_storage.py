@@ -2,8 +2,9 @@ import collections
 import itertools
 from pathlib import Path
 
+from models.company import Company
 from models.job import Job
-from storage.base import SiteConfig, Storage
+from storage.base import Storage
 
 
 class JsonStorage(Storage):
@@ -12,18 +13,18 @@ class JsonStorage(Storage):
         self.output_path = Path(output_path)
         self.jobs = self._get_jobs()
 
-    def load_site_configs(self) -> list[SiteConfig]:
-        configs = []
+    def load_companies(self) -> list[Company]:
+        companies = []
         for path in sorted(self.sites_dir.glob("*.json")):
             with open(path) as f:
-                configs.append(SiteConfig.from_json(f.read()))
-        return configs
+                companies.append(Company.from_json(f.read()))
+        return companies
 
-    def add_site_config(self, site_config: SiteConfig) -> None:
-        path = self.sites_dir / f"{site_config.company}.json"
-        path.write_text(site_config.to_json(indent=2))
+    def add_company(self, company: Company) -> None:
+        path = self.sites_dir / f"{company.company}.json"
+        path.write_text(company.to_json(indent=2))
 
-    def delete_site_config(self, company: str) -> None:
+    def delete_company(self, company: str) -> None:
         path = self.sites_dir / f"{company}.json"
         path.unlink()
 

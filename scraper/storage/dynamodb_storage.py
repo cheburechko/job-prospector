@@ -1,8 +1,9 @@
 import boto3
 from boto3.dynamodb.conditions import Key
 
+from models.company import Company
 from models.job import Job
-from storage.base import SiteConfig, Storage
+from storage.base import Storage
 
 CONFIGS_TABLE_SCHEMA = {
     "KeySchema": [{"AttributeName": "company", "KeyType": "HASH"}],
@@ -48,14 +49,14 @@ class DynamoDbStorage(Storage):
             BillingMode="PAY_PER_REQUEST",
         )
 
-    def load_site_configs(self) -> list[SiteConfig]:
+    def load_companies(self) -> list[Company]:
         response = self.configs_table.scan()
-        return [SiteConfig.from_dict(item) for item in response["Items"]]
+        return [Company.from_dict(item) for item in response["Items"]]
 
-    def add_site_config(self, site_config: SiteConfig) -> None:
-        self.configs_table.put_item(Item=site_config.to_dict())
+    def add_company(self, company: Company) -> None:
+        self.configs_table.put_item(Item=company.to_dict())
 
-    def delete_site_config(self, company: str) -> None:
+    def delete_company(self, company: str) -> None:
         self.configs_table.delete_item(Key={"company": company})
 
     def add_job(self, job: Job) -> None:
