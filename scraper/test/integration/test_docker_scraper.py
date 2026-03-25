@@ -128,13 +128,13 @@ async def _wait_for_jobs(dynamodb_storage, company, expected_count, timeout=30):
     """Poll DynamoDB until the expected number of jobs appear."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        jobs = dynamodb_storage.list_jobs(company)
+        jobs = await dynamodb_storage.list_jobs(company)
         if len(jobs) >= expected_count:
             return jobs
         await asyncio.sleep(1)
     raise TimeoutError(
         f"Expected {expected_count} jobs for {company}, "
-        f"got {len(dynamodb_storage.list_jobs(company))} after {timeout}s"
+        f"got {len(await dynamodb_storage.list_jobs(company))} after {timeout}s"
     )
 
 

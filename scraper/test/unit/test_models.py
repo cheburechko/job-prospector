@@ -39,18 +39,18 @@ class TestCompany:
         path.write_text(json.dumps(data))
         return tmp_path
 
-    def test_load_without_rps(self, tmp_path):
+    async def test_load_without_rps(self, tmp_path):
         d = self._write_company_json(tmp_path)
         storage = create_json_storage(sites_dir=str(d))
-        companies = storage.load_companies()
+        companies = await storage.load_companies()
         assert len(companies) == 1
         assert companies[0].company == "Acme"
         assert companies[0].rps is None
 
-    def test_load_with_rps(self, tmp_path):
+    async def test_load_with_rps(self, tmp_path):
         d = self._write_company_json(tmp_path, rps=5.0)
         storage = create_json_storage(sites_dir=str(d))
-        companies = storage.load_companies()
+        companies = await storage.load_companies()
         assert companies[0].rps == 5.0
 
 

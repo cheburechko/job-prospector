@@ -51,7 +51,7 @@ async def run(storage: Storage, queue: Queue, config: ScraperConfig):
 
                 for msg, jobs in zip(messages, results):
                     for job in jobs:
-                        storage.add_job(job)
+                        await storage.add_job(job)
                     await queue.delete_message(msg.receipt_handle)
         finally:
             await context.close()

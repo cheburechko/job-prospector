@@ -2,6 +2,9 @@ import collections
 import itertools
 from pathlib import Path
 
+import aiofiles
+import aiofiles.os
+
 from models.company import Company
 from models.config import JsonStorageConfig
 from models.job import Job
@@ -14,20 +17,21 @@ class JsonStorage(Storage):
         self.output_path = Path(config.output_path)
         self.jobs = self._get_jobs()
 
-    def load_companies(self) -> list[Company]:
+    async def load_companies(self) -> list[Company]:
         companies = []
         for path in sorted(self.sites_dir.glob("*.json")):
-            with open(path) as f:
-                companies.append(Company.from_json(f.read()))
+            async with aiofiles.open(path) as f:
+                companies.append(Company.from_json(await f.read()))
         return companies
 
-    def add_company(self, company: Company) -> None:
+    async def add_company(self, company: Company) -> None:
         path = self.sites_dir / f"{company.company}.json"
-        path.write_text(company.to_json(indent=2))
+        async with aiofiles.open(path, "w") as f:
+            await f.write(company.to_json(indent=2))
 
-    def delete_company(self, company: str) -> None:
+    async def delete_company(self, company: str) -> None:
         path = self.sites_dir / f"{company}.json"
-        path.unlink()
+        await aiofiles.os.remove(path)
 
     def _get_jobs(self) -> dict[str, dict[str, Job]]:
         result = collections.defaultdict(dict)
@@ -41,19 +45,21 @@ class JsonStorage(Storage):
                 result[job.company][job.url] = job
         return result
 
-    def _save_jobs(self) -> None:
+    async def _save_jobs(self) -> None:
         jobs_iter = itertools.chain.from_iterable(
             x.values() for x in self.jobs.values()
         )
-        self.output_path.write_text(Job.schema().dumps(jobs_iter, many=True, indent=2))
+        content = Job.schema().dumps(jobs_iter, many=True, indent=2)
+        async with aiofiles.open(self.output_path, "w") as f:
+            await f.write(content)
 
-    def add_job(self, job: Job) -> None:
+    async def add_job(self, job: Job) -> None:
         self.jobs[job.company][job.url] = job
-        self._save_jobs()
+        await self._save_jobs()
 
-    def delete_job(self, company: str, url: str) -> None:
+    async def delete_job(self, company: str, url: str) -> None:
         del self.jobs[company][url]
-        self._save_jobs()
+        await self._save_jobs()
 
-    def list_jobs(self, company: str) -> list[Job]:
+    async def list_jobs(self, company: str) -> list[Job]:
         return list(self.jobs[company].values())

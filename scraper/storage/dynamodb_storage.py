@@ -1,3 +1,5 @@
+import asyncio
+
 import boto3
 from boto3.dynamodb.conditions import Key
 
@@ -44,24 +46,29 @@ class DynamoDbStorage(Storage):
             BillingMode="PAY_PER_REQUEST",
         )
 
-    def load_companies(self) -> list[Company]:
-        response = self.configs_table.scan()
+    async def load_companies(self) -> list[Company]:
+        response = await asyncio.to_thread(self.configs_table.scan)
         return [Company.from_dict(item) for item in response["Items"]]
 
-    def add_company(self, company: Company) -> None:
-        self.configs_table.put_item(Item=company.to_dict())
+    async def add_company(self, company: Company) -> None:
+        await asyncio.to_thread(self.configs_table.put_item, Item=company.to_dict())
 
-    def delete_company(self, company: str) -> None:
-        self.configs_table.delete_item(Key={"company": company})
+    async def delete_company(self, company: str) -> None:
+        await asyncio.to_thread(
+            self.configs_table.delete_item, Key={"company": company}
+        )
 
-    def add_job(self, job: Job) -> None:
-        self.jobs_table.put_item(Item=job.to_dict())
+    async def add_job(self, job: Job) -> None:
+        await asyncio.to_thread(self.jobs_table.put_item, Item=job.to_dict())
 
-    def delete_job(self, company: str, url: str) -> None:
-        self.jobs_table.delete_item(Key={"company": company, "url": url})
+    async def delete_job(self, company: str, url: str) -> None:
+        await asyncio.to_thread(
+            self.jobs_table.delete_item, Key={"company": company, "url": url}
+        )
 
-    def list_jobs(self, company: str) -> list[Job]:
-        response = self.jobs_table.query(
-            KeyConditionExpression=Key("company").eq(company)
+    async def list_jobs(self, company: str) -> list[Job]:
+        response = await asyncio.to_thread(
+            self.jobs_table.query,
+            KeyConditionExpression=Key("company").eq(company),
         )
         return [Job.from_dict(item) for item in response["Items"]]
