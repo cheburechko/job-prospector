@@ -1,6 +1,4 @@
-import asyncio
-
-import boto3
+import aioboto3
 
 from models.company import Company
 from models.config import SqsConfig
@@ -9,17 +7,25 @@ from queues.base import Queue, QueueMessage
 
 class SqsQueue(Queue):
     def __init__(self, config: SqsConfig):
-        kwargs = {"region_name": config.region}
-        if config.endpoint_url:
-            kwargs["endpoint_url"] = config.endpoint_url
-        self.client = boto3.client("sqs", **kwargs)
-        self.queue_url = config.queue_url
-        self.wait_time_seconds = config.wait_time_seconds
-        self.max_messages = config.max_messages
+        self.config = config
+        self.session = aioboto3.Session()
+
+    async def __aenter__(self):
+        kwargs = {"region_name": self.config.region}
+        if self.config.endpoint_url:
+            kwargs["endpoint_url"] = self.config.endpoint_url
+        self._client_ctx = self.session.client("sqs", **kwargs)
+        self.client = await self._client_ctx.__aenter__()
+        self.queue_url = self.config.queue_url
+        self.wait_time_seconds = self.config.wait_time_seconds
+        self.max_messages = self.config.max_messages
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._client_ctx.__aexit__(exc_type, exc_val, exc_tb)
 
     async def receive_messages(self) -> list[QueueMessage]:
-        response = await asyncio.to_thread(
-            self.client.receive_message,
+        response = await self.client.receive_message(
             QueueUrl=self.queue_url,
             MaxNumberOfMessages=self.max_messages,
             WaitTimeSeconds=self.wait_time_seconds,
@@ -33,15 +39,13 @@ class SqsQueue(Queue):
         return messages
 
     async def delete_message(self, receipt_handle: str) -> None:
-        await asyncio.to_thread(
-            self.client.delete_message,
+        await self.client.delete_message(
             QueueUrl=self.queue_url,
             ReceiptHandle=receipt_handle,
         )
 
     async def send_message(self, company: Company) -> None:
-        await asyncio.to_thread(
-            self.client.send_message,
+        await self.client.send_message(
             QueueUrl=self.queue_url,
             MessageBody=company.to_json(),
         )

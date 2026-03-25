@@ -3,7 +3,7 @@ from test.helpers import make_company
 
 class TestSqsQueue:
     async def test_receive_messages(self, sqs_queue, company):
-        sqs_queue.client.send_message(
+        await sqs_queue.client.send_message(
             QueueUrl=sqs_queue.queue_url,
             MessageBody=company.to_json(),
         )
@@ -18,7 +18,7 @@ class TestSqsQueue:
         assert messages == []
 
     async def test_delete_message(self, sqs_queue, company):
-        sqs_queue.client.send_message(
+        await sqs_queue.client.send_message(
             QueueUrl=sqs_queue.queue_url,
             MessageBody=company.to_json(),
         )
@@ -39,11 +39,11 @@ class TestSqsQueue:
     async def test_receive_multiple_messages(self, sqs_queue, company):
         other = make_company(company="Other", url="https://other.com/jobs")
 
-        sqs_queue.client.send_message(
+        await sqs_queue.client.send_message(
             QueueUrl=sqs_queue.queue_url,
             MessageBody=company.to_json(),
         )
-        sqs_queue.client.send_message(
+        await sqs_queue.client.send_message(
             QueueUrl=sqs_queue.queue_url,
             MessageBody=other.to_json(),
         )

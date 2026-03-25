@@ -62,13 +62,17 @@ def load_config() -> ScraperConfig:
     return ScraperConfig()
 
 
-def main():
+async def async_main():
     config = load_config()
-    storage = DynamoDbStorage(config.dynamodb)
+    async with (
+        DynamoDbStorage(config.dynamodb) as storage,
+        SqsQueue(config.sqs) as queue,
+    ):
+        await run(storage, queue, config)
 
-    queue = SqsQueue(config.sqs)
 
-    asyncio.run(run(storage, queue, config))
+def main():
+    asyncio.run(async_main())
 
 
 if __name__ == "__main__":

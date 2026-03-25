@@ -2,7 +2,7 @@ import math
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import boto3
+import aioboto3
 import pytest
 from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
@@ -57,52 +57,57 @@ def elasticmq_container():
 
 
 @pytest.fixture
-def dynamodb_storage(dynamodb_container, monkeypatch):
+async def dynamodb_storage(dynamodb_container, monkeypatch):
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("AWS_DEFAULT_REGION", REGION)
     endpoint_url = f"http://{dynamodb_container.get_container_host_ip()}:{dynamodb_container.get_exposed_port(DYNAMODB_PORT)}"
 
-    storage = DynamoDbStorage(
+    async with DynamoDbStorage(
         DynamoDbConfig(
             configs_table=CONFIGS_TABLE,
             jobs_table=JOBS_TABLE,
             region=REGION,
             endpoint_url=endpoint_url,
         )
-    )
-    storage.create_tables()
-    yield storage
+    ) as storage:
+        await storage.create_tables()
+        yield storage
 
-    storage.dynamodb.Table(CONFIGS_TABLE).delete()
-    storage.dynamodb.Table(JOBS_TABLE).delete()
+        table = await storage.dynamodb.Table(CONFIGS_TABLE)
+        await table.delete()
+        table = await storage.dynamodb.Table(JOBS_TABLE)
+        await table.delete()
 
 
 @pytest.fixture
-def sqs_queue(elasticmq_container):
+async def sqs_queue(elasticmq_container, monkeypatch):
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", REGION)
     endpoint_url = f"http://{elasticmq_container.get_container_host_ip()}:{elasticmq_container.get_exposed_port(ELASTICMQ_PORT)}"
-    client = boto3.client(
+
+    session = aioboto3.Session()
+    async with session.client(
         "sqs",
         region_name=REGION,
         endpoint_url=endpoint_url,
-        aws_access_key_id="testing",
-        aws_secret_access_key="testing",
-    )
-    response = client.create_queue(QueueName=QUEUE_NAME)
-    queue_url = response["QueueUrl"]
+    ) as client:
+        response = await client.create_queue(QueueName=QUEUE_NAME)
+        queue_url = response["QueueUrl"]
 
-    queue = SqsQueue(
-        SqsConfig(
-            queue_url=queue_url,
-            region=REGION,
-            wait_time_seconds=0,
-            max_messages=10,
-            endpoint_url=endpoint_url,
-        )
-    )
-    yield queue
+        async with SqsQueue(
+            SqsConfig(
+                queue_url=queue_url,
+                region=REGION,
+                wait_time_seconds=0,
+                max_messages=10,
+                endpoint_url=endpoint_url,
+            )
+        ) as queue:
+            yield queue
 
-    client.delete_queue(QueueUrl=queue_url)
+        await client.delete_queue(QueueUrl=queue_url)
 
 
 @asynccontextmanager

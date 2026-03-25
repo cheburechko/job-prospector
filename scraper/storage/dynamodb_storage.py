@@ -1,6 +1,4 @@
-import asyncio
-
-import boto3
+import aioboto3
 from boto3.dynamodb.conditions import Key
 
 from models.company import Company
@@ -27,48 +25,52 @@ JOBS_TABLE_SCHEMA = {
 
 class DynamoDbStorage(Storage):
     def __init__(self, config: DynamoDbConfig):
-        kwargs = {"region_name": config.region}
-        if config.endpoint_url:
-            kwargs["endpoint_url"] = config.endpoint_url
-        self.dynamodb = boto3.resource("dynamodb", **kwargs)
-        self.configs_table = self.dynamodb.Table(config.configs_table)
-        self.jobs_table = self.dynamodb.Table(config.jobs_table)
+        self.config = config
+        self.session = aioboto3.Session()
 
-    def create_tables(self) -> None:
-        self.dynamodb.create_table(
+    async def __aenter__(self):
+        kwargs = {"region_name": self.config.region}
+        if self.config.endpoint_url:
+            kwargs["endpoint_url"] = self.config.endpoint_url
+        self._resource_ctx = self.session.resource("dynamodb", **kwargs)
+        self.dynamodb = await self._resource_ctx.__aenter__()
+        self.configs_table = await self.dynamodb.Table(self.config.configs_table)
+        self.jobs_table = await self.dynamodb.Table(self.config.jobs_table)
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._resource_ctx.__aexit__(exc_type, exc_val, exc_tb)
+
+    async def create_tables(self) -> None:
+        await self.dynamodb.create_table(
             TableName=self.configs_table.name,
             **CONFIGS_TABLE_SCHEMA,
             BillingMode="PAY_PER_REQUEST",
         )
-        self.dynamodb.create_table(
+        await self.dynamodb.create_table(
             TableName=self.jobs_table.name,
             **JOBS_TABLE_SCHEMA,
             BillingMode="PAY_PER_REQUEST",
         )
 
     async def load_companies(self) -> list[Company]:
-        response = await asyncio.to_thread(self.configs_table.scan)
+        response = await self.configs_table.scan()
         return [Company.from_dict(item) for item in response["Items"]]
 
     async def add_company(self, company: Company) -> None:
-        await asyncio.to_thread(self.configs_table.put_item, Item=company.to_dict())
+        await self.configs_table.put_item(Item=company.to_dict())
 
     async def delete_company(self, company: str) -> None:
-        await asyncio.to_thread(
-            self.configs_table.delete_item, Key={"company": company}
-        )
+        await self.configs_table.delete_item(Key={"company": company})
 
     async def add_job(self, job: Job) -> None:
-        await asyncio.to_thread(self.jobs_table.put_item, Item=job.to_dict())
+        await self.jobs_table.put_item(Item=job.to_dict())
 
     async def delete_job(self, company: str, url: str) -> None:
-        await asyncio.to_thread(
-            self.jobs_table.delete_item, Key={"company": company, "url": url}
-        )
+        await self.jobs_table.delete_item(Key={"company": company, "url": url})
 
     async def list_jobs(self, company: str) -> list[Job]:
-        response = await asyncio.to_thread(
-            self.jobs_table.query,
+        response = await self.jobs_table.query(
             KeyConditionExpression=Key("company").eq(company),
         )
         return [Job.from_dict(item) for item in response["Items"]]
