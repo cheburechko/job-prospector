@@ -1,26 +1,4 @@
-import pytest_asyncio
-from moto import mock_aws
-
-from models.config import DynamoDbConfig
-from storage.dynamodb_storage import DynamoDbStorage
 from test.helpers import make_job
-
-
-REGION = "eu-central-1"
-CONFIGS_TABLE = "scraper-site-configs"
-JOBS_TABLE = "scraper-jobs"
-
-
-@pytest_asyncio.fixture
-async def dynamodb_storage():
-    with mock_aws():
-        storage = DynamoDbStorage(
-            DynamoDbConfig(
-                configs_table=CONFIGS_TABLE, jobs_table=JOBS_TABLE, region=REGION
-            )
-        )
-        storage.create_tables()
-        yield storage
 
 
 class TestDynamoDbStorage:

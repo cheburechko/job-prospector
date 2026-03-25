@@ -5,22 +5,22 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from testcontainers.core.container import DockerContainer, LogMessageWaitStrategy
+from testcontainers.core.container import DockerContainer
 
 from models.company import Company
-from models.config import DynamoDbConfig, SqsConfig
-from queues.sqs_queue import SqsQueue
-from storage.dynamodb_storage import DynamoDbStorage
-from test.conftest import run_mock_server, ALL_JOBS
+from test.conftest import (
+    run_mock_server,
+    ALL_JOBS,
+    CONFIGS_TABLE,
+    JOBS_TABLE,
+    QUEUE_NAME,
+    DYNAMODB_PORT,
+    ELASTICMQ_PORT,
+    REGION,
+)
 
 pytestmark = pytest.mark.integration
 
-CONFIGS_TABLE = "test-configs"
-JOBS_TABLE = "test-jobs"
-REGION = "us-east-1"
-DYNAMODB_PORT = 8000
-ELASTICMQ_PORT = 9324
-QUEUE_NAME = "test-scraper-queue"
 HOST_DOCKER_INTERNAL = "host.docker.internal"
 
 
@@ -39,80 +39,6 @@ def docker_image():
     if result.returncode != 0:
         pytest.fail(f"Docker build failed:\n{result.stderr}")
     return tag
-
-
-@pytest.fixture(scope="session")
-def dynamodb_container():
-    container = DockerContainer("amazon/dynamodb-local:latest").with_exposed_ports(
-        DYNAMODB_PORT
-    )
-    with container:
-        container.waiting_for(
-            LogMessageWaitStrategy("CorsParams").with_startup_timeout(30)
-        )
-        yield container
-
-
-@pytest.fixture(scope="session")
-def elasticmq_container():
-    container = DockerContainer(
-        "softwaremill/elasticmq-native:latest"
-    ).with_exposed_ports(ELASTICMQ_PORT)
-    with container:
-        container.waiting_for(
-            LogMessageWaitStrategy("started").with_startup_timeout(30)
-        )
-        yield container
-
-
-@pytest.fixture
-def dynamodb_storage(dynamodb_container, monkeypatch):
-    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
-    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
-    monkeypatch.setenv("AWS_DEFAULT_REGION", REGION)
-    endpoint_url = f"http://{dynamodb_container.get_container_host_ip()}:{dynamodb_container.get_exposed_port(DYNAMODB_PORT)}"
-
-    storage = DynamoDbStorage(
-        DynamoDbConfig(
-            configs_table=CONFIGS_TABLE,
-            jobs_table=JOBS_TABLE,
-            region=REGION,
-            endpoint_url=endpoint_url,
-        )
-    )
-    storage.create_tables()
-    yield storage
-
-    storage.dynamodb.Table(CONFIGS_TABLE).delete()
-    storage.dynamodb.Table(JOBS_TABLE).delete()
-
-
-@pytest.fixture
-def sqs_queue(elasticmq_container):
-    import boto3
-
-    endpoint_url = f"http://{elasticmq_container.get_container_host_ip()}:{elasticmq_container.get_exposed_port(ELASTICMQ_PORT)}"
-    client = boto3.client(
-        "sqs",
-        region_name=REGION,
-        endpoint_url=endpoint_url,
-        aws_access_key_id="testing",
-        aws_secret_access_key="testing",
-    )
-    response = client.create_queue(QueueName=QUEUE_NAME)
-    queue_url = response["QueueUrl"]
-
-    queue = SqsQueue(
-        SqsConfig(
-            queue_url=queue_url,
-            region=REGION,
-            wait_time_seconds=1,
-            endpoint_url=endpoint_url,
-        )
-    )
-    yield queue
-
-    client.delete_queue(QueueUrl=queue_url)
 
 
 @pytest_asyncio.fixture

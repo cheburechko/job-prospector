@@ -1,32 +1,4 @@
-import pytest
-from moto import mock_aws
-
-from models.config import SqsConfig
-from queues.sqs_queue import SqsQueue
 from test.helpers import make_company
-
-REGION = "eu-central-1"
-QUEUE_NAME = "test-scraper-queue"
-
-
-@pytest.fixture
-def sqs_queue():
-    with mock_aws():
-        import boto3
-
-        client = boto3.client("sqs", region_name=REGION)
-        response = client.create_queue(QueueName=QUEUE_NAME)
-        queue_url = response["QueueUrl"]
-
-        queue = SqsQueue(
-            SqsConfig(
-                queue_url=queue_url,
-                region=REGION,
-                wait_time_seconds=0,
-                max_messages=10,
-            )
-        )
-        yield queue
 
 
 class TestSqsQueue:
