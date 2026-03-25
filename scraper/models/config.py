@@ -45,3 +45,4 @@ class ScraperConfig(BaseSettings):
     sqs: SqsConfig = SqsConfig()
     rps: float = 2.0
     timeout: int = 5000
+    max_concurrency: int = 5

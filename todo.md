@@ -1,6 +1,3 @@
 - Generalize AWS settings in configs
-- Try aibotocore or aiboto3
-- Limit inflight in scraper
-- Handle receiving messages from queue and scraping in parallel, like select
 - Pass data in tests with fixtures instead of imports
 - Remove interfaces (maybe?)
