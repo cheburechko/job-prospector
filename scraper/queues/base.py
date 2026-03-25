@@ -16,3 +16,6 @@ class Queue(ABC):
 
     @abstractmethod
     async def delete_message(self, receipt_handle: str) -> None: ...
+
+    @abstractmethod
+    async def send_message(self, company: Company) -> None: ...

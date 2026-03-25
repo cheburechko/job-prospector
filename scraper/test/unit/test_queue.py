@@ -55,6 +55,13 @@ class TestSqsQueue:
         remaining = await sqs_queue.receive_messages()
         assert remaining == []
 
+    async def test_send_message(self, sqs_queue, company):
+        await sqs_queue.send_message(company)
+
+        messages = await sqs_queue.receive_messages()
+        assert len(messages) == 1
+        assert messages[0].company == company
+
     async def test_receive_multiple_messages(self, sqs_queue, company):
         other = Company(
             company="Other",

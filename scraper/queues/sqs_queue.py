@@ -44,3 +44,10 @@ class SqsQueue(Queue):
             QueueUrl=self.queue_url,
             ReceiptHandle=receipt_handle,
         )
+
+    async def send_message(self, company: Company) -> None:
+        await asyncio.to_thread(
+            self.client.send_message,
+            QueueUrl=self.queue_url,
+            MessageBody=company.to_json(),
+        )
