@@ -1,0 +1,8 @@
+- Move configs to models, create objects with configs instead of parameter list
+- Storage should be async
+- Try aibotocore or aiboto3
+- Make general puprose funcs for test data
+- Limit inflight in scraper
+- Generalize AWS settings in configs
+- Handle receiving messages from queue and scraping in parallel, like select
+- Integration test for SQS

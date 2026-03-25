@@ -34,11 +34,22 @@ class StorageType(StrEnum):
     DYNAMODB = "dynamodb"
 
 
+class SqsConfig(BaseSettings):
+    model_config = {"env_prefix": "SQS_"}
+
+    queue_url: str = ""
+    region: str = "eu-central-1"
+    endpoint_url: str | None = None
+    wait_time_seconds: int = 20
+    max_messages: int = 10
+
+
 class ScraperConfig(BaseSettings):
     model_config = {"env_prefix": "SCRAPER_"}
 
     proxy: ProxyConfig = ProxyConfig()
     dynamodb: DynamoDbConfig = DynamoDbConfig()
+    sqs: SqsConfig = SqsConfig()
     storage_type: StorageType = StorageType.JSON
     rps: float = 2.0
     timeout: int = 5000

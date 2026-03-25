@@ -1,21 +1,16 @@
 import asyncio
-import sys
 from playwright.async_api import async_playwright
 
 from config import ScraperConfig, load_config, StorageType
 from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
+from queues.base import Queue
+from queues.sqs_queue import SqsQueue
 from storage.base import Storage
 from storage.json_storage import JsonStorage
 from template.engine import ScrapingEngine
 
 
-async def run(storage: Storage, config: ScraperConfig):
-    companies = storage.load_companies()
-
-    if not companies:
-        print("No companies found", file=sys.stderr)
-        return
-
+async def run(storage: Storage, queue: Queue, config: ScraperConfig):
     async with async_playwright() as p:
         launch_args = {}
         if config.proxy.enabled:
@@ -43,14 +38,24 @@ async def run(storage: Storage, config: ScraperConfig):
                 job_page=site.job_page,
             )
 
-        results = await asyncio.gather(*(scrape_one(site) for site in companies))
-        all_jobs = [job for jobs in results for job in jobs]
+        try:
+            while True:
+                messages = await queue.receive_messages()
+                if not messages:
+                    continue
 
-        await context.close()
-        await browser.close()
+                companies = [msg.company for msg in messages]
+                results = await asyncio.gather(
+                    *(scrape_one(site) for site in companies)
+                )
 
-    for job in all_jobs:
-        storage.add_job(job)
+                for msg, jobs in zip(messages, results):
+                    for job in jobs:
+                        storage.add_job(job)
+                    await queue.delete_message(msg.receipt_handle)
+        finally:
+            await context.close()
+            await browser.close()
 
 
 def main():
@@ -69,7 +74,16 @@ def main():
             sites_dir=config.sites_dir,
             output_path=config.output_path,
         )
-    asyncio.run(run(storage, config))
+
+    queue = SqsQueue(
+        queue_url=config.sqs.queue_url,
+        region=config.sqs.region,
+        wait_time_seconds=config.sqs.wait_time_seconds,
+        max_messages=config.sqs.max_messages,
+        endpoint_url=config.sqs.endpoint_url,
+    )
+
+    asyncio.run(run(storage, queue, config))
 
 
 if __name__ == "__main__":

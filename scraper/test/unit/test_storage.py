@@ -3,28 +3,9 @@ import json
 import pytest
 from moto import mock_aws
 
-from models.company import Company
 from models.job import Job
 from storage.dynamodb_storage import DynamoDbStorage
 from storage.json_storage import JsonStorage
-from models.scenario import CareersPageScenario, JobPageScenario
-
-
-@pytest.fixture
-def company():
-    return Company(
-        company="Acme",
-        url="https://example.com/jobs",
-        careers_page=CareersPageScenario(
-            job_card_selector="div.job",
-            job_link_selector="a",
-        ),
-        job_page=JobPageScenario(
-            title_selectors=["h1"],
-            location_selectors=[".loc"],
-            description_selectors=[".desc"],
-        ),
-    )
 
 
 def _make_job(company="Acme", url="https://example.com/jobs/1", title="Engineer"):

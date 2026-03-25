@@ -7,8 +7,9 @@ This is the script for scraping jobs off of the tech companies sites. Its goal i
   - job location
   - job description
 
-The script will be used to go through a list of given company URLs and collect the data once. The script will be run regularly by cron.
-
+The script listens for the scraping tasks on the queue.
+- It receives Company objects in JSON format from the queue. 
+- It can process multiple companies at the same time asynchronously.
 - The script will be written in Python using playwright library
 - The request should be handled with async
 - Scraping should be done through configurable HTTPS proxy
@@ -19,6 +20,7 @@ The script will be used to go through a list of given company URLs and collect t
 - docker/ - docker image for scraper
 - models/ - dataclasses for scraping scenarios and jobs
 - storage/ - storage implementations for storing/retrieving jobs and scenarios
+- queues/ - queue implementations for receiving scraping tasks
 - template/ - engine for scraping sites
 - test/unit/ - unit tests
 - test/integraion/ - integration tests using testcontainers
@@ -45,3 +47,8 @@ Config should be used by the script for scraping. There may be more configs in t
 The script should use abstract storage for retrieving scraping configs and storing scraping results. Implementaions:
 - JSON files
 - DynamoDB
+
+
+### Queue
+The script uses abstract queue for receiving scraping configs. Implementaions:
+- Amazon SQS
