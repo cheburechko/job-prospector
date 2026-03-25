@@ -1,6 +1,5 @@
 - Generalize AWS settings in configs
 - Storage should be async
 - Try aibotocore or aiboto3
-- Make general puprose funcs for test data
 - Limit inflight in scraper
 - Handle receiving messages from queue and scraping in parallel, like select

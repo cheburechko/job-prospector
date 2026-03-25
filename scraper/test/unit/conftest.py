@@ -1,11 +1,10 @@
 import pytest
 import pytest_asyncio
 from playwright.async_api import async_playwright
-
-from models.company import Company
-from models.scenario import CareersPageScenario, JobPageScenario
 from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
+
 from test.conftest import run_mock_server
+from test.helpers import make_company
 
 
 @pytest_asyncio.fixture
@@ -38,16 +37,4 @@ def rate_limiter():
 
 @pytest.fixture
 def company():
-    return Company(
-        company="Acme",
-        url="https://example.com/jobs",
-        careers_page=CareersPageScenario(
-            job_card_selector="div.job",
-            job_link_selector="a",
-        ),
-        job_page=JobPageScenario(
-            title_selectors=["h1"],
-            location_selectors=[".loc"],
-            description_selectors=[".desc"],
-        ),
-    )
+    return make_company()

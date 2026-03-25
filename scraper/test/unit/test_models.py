@@ -1,7 +1,7 @@
 import json
 
 from models.scenario import CareersPageScenario, JobPageScenario
-from test.unit.test_storage import _create_json_storage
+from test.helpers import create_json_storage, make_company_json
 
 
 class TestCareersPageScenario:
@@ -33,36 +33,23 @@ class TestCareersPageScenario:
 
 
 class TestCompany:
-    def _make_company_json(self, tmp_path, **extra):
-        data = {
-            "company": "Acme",
-            "url": "https://example.com/jobs",
-            "careers_page": {
-                "job_card_selector": "div.job",
-                "job_link_selector": "a",
-            },
-            "job_page": {
-                "title_selectors": ["h1"],
-                "location_selectors": [".loc"],
-                "description_selectors": [".desc"],
-            },
-            **extra,
-        }
+    def _write_company_json(self, tmp_path, **extra):
+        data = make_company_json(**extra)
         path = tmp_path / "acme.json"
         path.write_text(json.dumps(data))
         return tmp_path
 
     def test_load_without_rps(self, tmp_path):
-        d = self._make_company_json(tmp_path)
-        storage = _create_json_storage(sites_dir=str(d))
+        d = self._write_company_json(tmp_path)
+        storage = create_json_storage(sites_dir=str(d))
         companies = storage.load_companies()
         assert len(companies) == 1
         assert companies[0].company == "Acme"
         assert companies[0].rps is None
 
     def test_load_with_rps(self, tmp_path):
-        d = self._make_company_json(tmp_path, rps=5.0)
-        storage = _create_json_storage(sites_dir=str(d))
+        d = self._write_company_json(tmp_path, rps=5.0)
+        storage = create_json_storage(sites_dir=str(d))
         companies = storage.load_companies()
         assert companies[0].rps == 5.0
 

@@ -1,10 +1,9 @@
 import pytest
 from moto import mock_aws
 
-from models.company import Company
 from models.config import SqsConfig
-from models.scenario import CareersPageScenario, JobPageScenario
 from queues.sqs_queue import SqsQueue
+from test.helpers import make_company
 
 REGION = "eu-central-1"
 QUEUE_NAME = "test-scraper-queue"
@@ -66,19 +65,7 @@ class TestSqsQueue:
         assert messages[0].company == company
 
     async def test_receive_multiple_messages(self, sqs_queue, company):
-        other = Company(
-            company="Other",
-            url="https://other.com/jobs",
-            careers_page=CareersPageScenario(
-                job_card_selector="div.job",
-                job_link_selector="a",
-            ),
-            job_page=JobPageScenario(
-                title_selectors=["h1"],
-                location_selectors=[".loc"],
-                description_selectors=[".desc"],
-            ),
-        )
+        other = make_company(company="Other", url="https://other.com/jobs")
 
         sqs_queue.client.send_message(
             QueueUrl=sqs_queue.queue_url,
