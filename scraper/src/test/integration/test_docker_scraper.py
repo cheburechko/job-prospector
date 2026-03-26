@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import time
 from pathlib import Path
 
@@ -22,6 +23,8 @@ from test.conftest import (
 pytestmark = pytest.mark.integration
 
 HOST_DOCKER_INTERNAL = "host.docker.internal"
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope="session")
@@ -50,6 +53,27 @@ async def mock_target_server():
         yield base_url
 
 
+def _make_container(docker_image, dynamodb_container, elasticmq_container):
+    """Create a DockerContainer with shared AWS env vars."""
+    dynamodb_url = f"http://{HOST_DOCKER_INTERNAL}:{dynamodb_container.get_exposed_port(DYNAMODB_PORT)}"
+    elasticmq_url = f"http://{HOST_DOCKER_INTERNAL}:{elasticmq_container.get_exposed_port(ELASTICMQ_PORT)}"
+    sqs_queue_url = f"{elasticmq_url}/000000000000/{QUEUE_NAME}"
+
+    return (
+        DockerContainer(docker_image)
+        .with_env("DYNAMODB_CONFIGS_TABLE", CONFIGS_TABLE)
+        .with_env("DYNAMODB_JOBS_TABLE", JOBS_TABLE)
+        .with_env("DYNAMODB_REGION", REGION)
+        .with_env("DYNAMODB_ENDPOINT_URL", dynamodb_url)
+        .with_env("SQS_QUEUE_URL", sqs_queue_url)
+        .with_env("SQS_REGION", REGION)
+        .with_env("SQS_ENDPOINT_URL", elasticmq_url)
+        .with_env("AWS_ACCESS_KEY_ID", "testing")
+        .with_env("AWS_SECRET_ACCESS_KEY", "testing")
+        .with_kwargs(extra_hosts={HOST_DOCKER_INTERNAL: "host-gateway"})
+    )
+
+
 async def _wait_for_jobs(dynamodb_storage, company, expected_count, timeout=30):
     """Poll DynamoDB until the expected number of jobs appear."""
     deadline = time.monotonic() + timeout
@@ -58,10 +82,7 @@ async def _wait_for_jobs(dynamodb_storage, company, expected_count, timeout=30):
         if len(jobs) >= expected_count:
             return jobs
         await asyncio.sleep(1)
-    raise TimeoutError(
-        f"Expected {expected_count} jobs for {company}, "
-        f"got {len(await dynamodb_storage.list_jobs(company))} after {timeout}s"
-    )
+    return None
 
 
 async def test_scraper_container(
@@ -75,38 +96,28 @@ async def test_scraper_container(
 ):
     base_url = mock_target_server
 
-    # Send company config to SQS queue
+    # Add company to storage (scheduler will send it to the queue)
     site_data = json.loads(fixtures_dir.joinpath("site.json").read_text())
     site_data["url"] = f"{base_url}/careers/"
     company = Company.from_dict(site_data)
-    await sqs_queue.send_message(company)
+    await dynamodb_storage.add_company(company)
 
-    # Build the SQS queue URL as seen from inside Docker
-    elasticmq_docker_url = f"http://{HOST_DOCKER_INTERNAL}:{elasticmq_container.get_exposed_port(ELASTICMQ_PORT)}"
-    sqs_queue_url = f"{elasticmq_docker_url}/000000000000/{QUEUE_NAME}"
-
-    container = (
-        DockerContainer(docker_image)
-        .with_env("SCRAPER_STORAGE_TYPE", "dynamodb")
-        .with_env("DYNAMODB_CONFIGS_TABLE", CONFIGS_TABLE)
-        .with_env("DYNAMODB_JOBS_TABLE", JOBS_TABLE)
-        .with_env("DYNAMODB_REGION", REGION)
-        .with_env(
-            "DYNAMODB_ENDPOINT_URL",
-            f"http://{HOST_DOCKER_INTERNAL}:{dynamodb_container.get_exposed_port(DYNAMODB_PORT)}",
-        )
-        .with_env("SQS_QUEUE_URL", sqs_queue_url)
-        .with_env("SQS_REGION", REGION)
-        .with_env("SQS_ENDPOINT_URL", elasticmq_docker_url)
-        .with_env("SQS_WAIT_TIME_SECONDS", "1")
-        .with_env("AWS_ACCESS_KEY_ID", "testing")
-        .with_env("AWS_SECRET_ACCESS_KEY", "testing")
+    scheduler = _make_container(
+        docker_image, dynamodb_container, elasticmq_container
+    ).with_command("scheduler")
+    worker = (
+        _make_container(docker_image, dynamodb_container, elasticmq_container)
+        .with_command("worker")
         .with_env("SCRAPER_RPS", "1000")
-        .with_kwargs(extra_hosts={HOST_DOCKER_INTERNAL: "host-gateway"})
+        .with_env("SCRAPER_SQS_WAIT_TIME_SECONDS", "1")
     )
-
-    with container:
-        jobs = await _wait_for_jobs(dynamodb_storage, "Acme Corp", len(ALL_JOBS))
+    with scheduler, worker:
+        jobs = await _wait_for_jobs(dynamodb_storage, "Acme Corp", len(ALL_JOBS), 10)
+        if jobs is None:
+            logger.error("No jobs found")
+            logger.error("Scheduler logs: %s", scheduler.get_logs())
+            logger.error("Worker logs: %s", worker.get_logs())
+            pytest.fail("No jobs found")
         assert {(job.title, job.location) for job in jobs} == {
             (job["title"], job["location"]) for job in ALL_JOBS
         }

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from pydantic import BaseModel
 from pydantic_settings import CliApp, CliSubCommand
@@ -27,6 +28,7 @@ class Cli(BaseModel):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
     CliApp.run(Cli)
 
 

@@ -10,4 +10,5 @@ RUN playwright install --with-deps chromium
 COPY src/ src/
 
 ENV PYTHONPATH=/app/src
-CMD ["python", "-m", "main", "worker"]
+ENTRYPOINT ["python", "-m", "main"]
+CMD ["worker"]

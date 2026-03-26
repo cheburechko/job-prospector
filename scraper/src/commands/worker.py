@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from playwright.async_api import BrowserContext, async_playwright
 
@@ -7,6 +8,8 @@ from models.config import ScraperConfig
 from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
 from sqs_queue import QueueMessage, SqsQueue
 from template.engine import ScrapingEngine
+
+logger = logging.getLogger(__name__)
 
 
 def _make_limiter(rps: float) -> Limiter:
@@ -34,16 +37,19 @@ async def process_message(
     default_rps: float,
 ):
     try:
+        logger.info("Scraping %s", msg.company.company)
         jobs = await scrape_one(context, msg.company, default_rps)
         for job in jobs:
             await storage.add_job(job)
         await queue.delete_message(msg.receipt_handle)
+        logger.info("Scraped %s: %d jobs", msg.company.company, len(jobs))
     finally:
         semaphore.release()
 
 
 async def run(storage: DynamoDbStorage, queue: SqsQueue, config: ScraperConfig):
     semaphore = asyncio.Semaphore(config.max_concurrency)
+    logger.info("Worker started, max_concurrency=%d", config.max_concurrency)
 
     async with async_playwright() as p:
         launch_args = {}
@@ -62,6 +68,8 @@ async def run(storage: DynamoDbStorage, queue: SqsQueue, config: ScraperConfig):
             async with asyncio.TaskGroup() as tg:
                 while True:
                     messages = await queue.receive_messages()
+                    if messages:
+                        logger.info("Received %d messages", len(messages))
                     for msg in messages:
                         await semaphore.acquire()
                         tg.create_task(
