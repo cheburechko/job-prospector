@@ -7,9 +7,10 @@ This is the service for scraping jobs off of the tech companies sites. Its goal 
   - job location
   - job description
 
-The service consists of two components:
+The service consists of two components and a test tool:
 - scheduler - schedules scraping of sites by sending all company sites from storage to the queue
 - worker - listens for the scraping tasks on the queue
+- test - scrapes a single company from a local JSON config file and writes results to a JSON file
 
 
 ### Worker
@@ -19,12 +20,20 @@ The service consists of two components:
 - The request should be handled with async
 - Scraping should be done through configurable HTTPS proxy
 - Sites should be scraped in parallel, each site is scraped sequentially with a rate limit. By default site uses the global rate limit, but it can be overriden in the site config
+- Runs as ECS service, scales up when there scraping tasks in queue, deallocates otherwise
+
+### Test
+- Accepts a JSON file with Company scraping config (same format as site configs in DynamoDB)
+- Scrapes the single company and writes results as JSON to an output file (default: out.json)
+- Supports HTTPS proxy settings
+- Used for developing and validating scraping configs locally
 
 
 ## Outline
 - docker/ - docker image for scraper
 - src/commands/scheduler.py - one time scheduler for scraping tasks
 - src/commands/worker.py - worker queue processing loop
+- src/commands/test.py - single company test scraper
 - src/models/ - dataclasses for scraping scenarios and jobs
 - src/template/ - engine for scraping sites
 - src/test/fixtures/ - test data shared by all tests
