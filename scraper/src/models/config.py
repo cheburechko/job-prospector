@@ -37,6 +37,13 @@ class SqsConfig(BaseSettings):
     max_messages: int = 10
 
 
+class SchedulerConfig(BaseSettings):
+    model_config = {"env_prefix": "SCRAPER_"}
+
+    dynamodb: DynamoDbConfig = DynamoDbConfig()
+    sqs: SqsConfig = SqsConfig()
+
+
 class ScraperConfig(BaseSettings):
     model_config = {"env_prefix": "SCRAPER_"}
 

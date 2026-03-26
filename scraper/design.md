@@ -23,8 +23,8 @@ The service consists of two components:
 
 ## Outline
 - docker/ - docker image for scraper
-- src/commands/scheduler - one time scheduler for scraping tasks
-- src/commands/worker - worker queue processing loop
+- src/commands/scheduler.py - one time scheduler for scraping tasks
+- src/commands/worker.py - worker queue processing loop
 - src/models/ - dataclasses for scraping scenarios and jobs
 - src/template/ - engine for scraping sites
 - src/test/fixtures/ - test data shared by all tests
