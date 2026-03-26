@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 RUN playwright install --with-deps chromium
 
-COPY . .
+COPY src/ src/
 
-CMD ["python", "main.py"]
+ENV PYTHONPATH=/app/src
+CMD ["python", "-m", "main", "worker"]

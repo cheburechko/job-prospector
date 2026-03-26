@@ -1,4 +1,5 @@
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = "-p no:anyio"
+pythonpath = ["src"]
 markers = ["integration: marks tests that require Docker"]

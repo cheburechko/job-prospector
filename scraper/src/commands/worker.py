@@ -2,10 +2,10 @@ import asyncio
 
 from playwright.async_api import BrowserContext, async_playwright
 
+from dynamodb_storage import DynamoDbStorage
 from models.config import ScraperConfig
 from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
 from sqs_queue import QueueMessage, SqsQueue
-from dynamodb_storage import DynamoDbStorage
 from template.engine import ScrapingEngine
 
 
@@ -74,22 +74,9 @@ async def run(storage: DynamoDbStorage, queue: SqsQueue, config: ScraperConfig):
             await browser.close()
 
 
-def load_config() -> ScraperConfig:
-    return ScraperConfig()
-
-
-async def async_main():
-    config = load_config()
+async def run_worker(config: ScraperConfig):
     async with (
         DynamoDbStorage(config.dynamodb) as storage,
         SqsQueue(config.sqs) as queue,
     ):
         await run(storage, queue, config)
-
-
-def main():
-    asyncio.run(async_main())
-
-
-if __name__ == "__main__":
-    main()

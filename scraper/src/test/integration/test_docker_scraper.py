@@ -32,7 +32,7 @@ def docker_image():
     tag = "job-prospector-scraper:test"
     result = subprocess.run(
         ["docker", "build", "-t", tag, "-f", "docker/Dockerfile", "."],
-        cwd=str(Path(__file__).parent.parent.parent),
+        cwd=str(Path(__file__).parent.parent.parent.parent),
         capture_output=True,
         text=True,
     )

@@ -1,13 +1,18 @@
 ## Design
 
-This is the script for scraping jobs off of the tech companies sites. Its goal is to 
+This is the service for scraping jobs off of the tech companies sites. Its goal is to 
 - iterate through all of the job postings available at the given URL, including paging
 - visit the pages of all of the jobs and collect the following info
   - job title
   - job location
   - job description
 
-The script listens for the scraping tasks on the queue.
+The service consists of two components:
+- scheduler - schedules scraping of sites by sending all company sites from storage to the queue
+- worker - listens for the scraping tasks on the queue
+
+
+### Worker
 - It receives Company objects in JSON format from the queue. 
 - It can process multiple companies at the same time asynchronously.
 - The script will be written in Python using playwright library
@@ -18,15 +23,14 @@ The script listens for the scraping tasks on the queue.
 
 ## Outline
 - docker/ - docker image for scraper
-- models/ - dataclasses for scraping scenarios and jobs
-- storage/ - storage implementations for storing/retrieving jobs and scenarios
-- queues/ - queue implementations for receiving scraping tasks
-- template/ - engine for scraping sites
-- test/unit/ - unit tests
-- test/integraion/ - integration tests using testcontainers
-- test/fixtures/ - test data shared by all tests
-- config.py - script configuration
-- main.py - main entrypoint
+- src/commands/scheduler - one time scheduler for scraping tasks
+- src/commands/worker - worker queue processing loop
+- src/models/ - dataclasses for scraping scenarios and jobs
+- src/template/ - engine for scraping sites
+- src/test/fixtures/ - test data shared by all tests
+- src/test/integraion/
+- src/test/unit/
+- src/main.py - CLI
 
 
 ### Scraping configs
@@ -42,12 +46,3 @@ In order to allow scarping many different websites, there should be a universal 
 These classes should be serilizable to/from json. Classes should be placed in the scraper/models folder
 
 Config should be used by the script for scraping. There may be more configs in the future, so allow the script to be extended with new types of configs.
-
-### Storage
-The script should use abstract storage for retrieving scraping configs and storing scraping results. Implementaions:
-- DynamoDB
-
-
-### Queue
-The script uses abstract queue for receiving scraping configs. Implementaions:
-- Amazon SQS

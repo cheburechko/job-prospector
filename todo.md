@@ -1,3 +1,2 @@
 - Generalize AWS settings in configs
 - Pass data in tests with fixtures instead of imports
-- Remove interfaces (maybe?)
