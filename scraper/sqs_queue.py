@@ -1,11 +1,18 @@
+from dataclasses import dataclass
+
 import aioboto3
 
 from models.company import Company
 from models.config import SqsConfig
-from queues.base import Queue, QueueMessage
 
 
-class SqsQueue(Queue):
+@dataclass
+class QueueMessage:
+    company: Company
+    receipt_handle: str
+
+
+class SqsQueue:
     def __init__(self, config: SqsConfig):
         self.config = config
         self.session = aioboto3.Session()

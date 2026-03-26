@@ -4,7 +4,6 @@ from boto3.dynamodb.conditions import Key
 from models.company import Company
 from models.config import DynamoDbConfig
 from models.job import Job
-from storage.base import Storage
 
 CONFIGS_TABLE_SCHEMA = {
     "KeySchema": [{"AttributeName": "company", "KeyType": "HASH"}],
@@ -23,7 +22,7 @@ JOBS_TABLE_SCHEMA = {
 }
 
 
-class DynamoDbStorage(Storage):
+class DynamoDbStorage:
     def __init__(self, config: DynamoDbConfig):
         self.config = config
         self.session = aioboto3.Session()

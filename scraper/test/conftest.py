@@ -9,8 +9,8 @@ from jinja2 import Environment, FileSystemLoader
 from testcontainers.core.container import DockerContainer, LogMessageWaitStrategy
 
 from models.config import DynamoDbConfig, SqsConfig
-from queues.sqs_queue import SqsQueue
-from storage.dynamodb_storage import DynamoDbStorage
+from sqs_queue import SqsQueue
+from dynamodb_storage import DynamoDbStorage
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 DYNAMODB_PORT = 8000

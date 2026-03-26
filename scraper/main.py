@@ -4,10 +4,8 @@ from playwright.async_api import BrowserContext, async_playwright
 
 from models.config import ScraperConfig
 from pyrate_limiter import Duration, Rate, InMemoryBucket, Limiter
-from queues.base import Queue, QueueMessage
-from queues.sqs_queue import SqsQueue
-from storage.base import Storage
-from storage.dynamodb_storage import DynamoDbStorage
+from sqs_queue import QueueMessage, SqsQueue
+from dynamodb_storage import DynamoDbStorage
 from template.engine import ScrapingEngine
 
 
@@ -30,8 +28,8 @@ async def scrape_one(context: BrowserContext, site, default_rps: float):
 async def process_message(
     msg: QueueMessage,
     context: BrowserContext,
-    storage: Storage,
-    queue: Queue,
+    storage: DynamoDbStorage,
+    queue: SqsQueue,
     semaphore: asyncio.Semaphore,
     default_rps: float,
 ):
@@ -44,7 +42,7 @@ async def process_message(
         semaphore.release()
 
 
-async def run(storage: Storage, queue: Queue, config: ScraperConfig):
+async def run(storage: DynamoDbStorage, queue: SqsQueue, config: ScraperConfig):
     semaphore = asyncio.Semaphore(config.max_concurrency)
 
     async with async_playwright() as p:
