@@ -34,7 +34,7 @@ class Scraper:
         await self._browser.close()
         await self._pw.stop()
 
-    async def scrape(self, site: Company) -> list[Job]:
+    async def scrape(self, site: Company, limit: int = None) -> list[Job]:
         rps = site.rps if site.rps is not None else self.rps
         bucket = InMemoryBucket([Rate(int(rps), Duration.SECOND)])
         limiter = Limiter(bucket)
@@ -44,4 +44,5 @@ class Scraper:
             company=site.company,
             careers=site.careers_page,
             job_page=site.job_page,
+            limit=limit,
         )

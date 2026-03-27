@@ -13,7 +13,7 @@ async def run_test(config: TestConfig):
         company = Company.from_dict(json.load(f))
 
     async with Scraper(config.proxy, config.scraper) as scraper:
-        jobs = await scraper.scrape(company)
+        jobs = await scraper.scrape(company, config.limit)
 
     result = [job.to_dict() for job in jobs]
     with open(config.output, "w") as f:

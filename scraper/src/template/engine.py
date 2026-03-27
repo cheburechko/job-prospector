@@ -1,3 +1,4 @@
+import logging
 import urllib.parse
 
 from playwright.async_api import BrowserContext
@@ -7,6 +8,8 @@ from models.scenario import CareersPageScenario, JobPageScenario
 from pyrate_limiter import Limiter
 
 REQUEST = "request"
+
+logger = logging.getLogger(__name__)
 
 
 class ScrapingEngine:
@@ -20,8 +23,9 @@ class ScrapingEngine:
         company: str,
         careers: CareersPageScenario,
         job_page: JobPageScenario,
+        limit: int = None,
     ) -> list[Job]:
-        urls = await self._collect_job_urls(url, careers)
+        urls = await self._collect_job_urls(url, careers, limit)
         jobs = []
         for job_url in urls:
             job = await self._scrape_job(job_url, company, job_page)
@@ -30,14 +34,16 @@ class ScrapingEngine:
         return jobs
 
     async def _collect_job_urls(
-        self, url: str, scenario: CareersPageScenario
-    ) -> list[str]:
+        self, url: str, scenario: CareersPageScenario, limit: int = None
+    ) -> set[str]:
         await self._limit_request()
         page = await self.context.new_page()
         try:
-            await page.goto(url, wait_until="domcontentloaded")
-            urls: list[str] = []
-            seen: set[str] = set()
+            logger.info("Collecting job urls from %s", url)
+            response = await page.goto(url, wait_until="domcontentloaded")
+            if not response.ok:
+                raise Exception(f"Failed to go to page {url}, status {response.status}")
+            urls: set[str] = set()
 
             while True:
                 cards = await page.query_selector_all(scenario.job_card_selector)
@@ -49,9 +55,12 @@ class ScrapingEngine:
                     if href is None:
                         continue
                     absolute = urllib.parse.urljoin(url, href)
-                    if absolute not in seen:
-                        seen.add(absolute)
-                        urls.append(absolute)
+                    urls.add(absolute)
+                    if limit is not None and len(urls) >= limit:
+                        break
+
+                if limit is not None and len(urls) >= limit:
+                    break
 
                 if not scenario.next_page_selector:
                     break
@@ -67,6 +76,7 @@ class ScrapingEngine:
                     break
 
                 await next_btn.click()
+                logger.info("Clicked next page: %s", page.url)
                 await page.wait_for_load_state("domcontentloaded")
 
             return urls
@@ -79,6 +89,7 @@ class ScrapingEngine:
         await self._limit_request()
         page = await self.context.new_page()
         try:
+            logger.info("Scraping job %s", url)
             await page.goto(url, wait_until="domcontentloaded")
 
             title = await self._extract_field(page, scenario.title_selectors)

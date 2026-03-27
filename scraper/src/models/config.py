@@ -56,6 +56,7 @@ class TestConfig(BaseSettings):
     output: str = "out.json"
     proxy: ProxyConfig = ProxyConfig()
     scraper: ScraperConfig = ScraperConfig()
+    limit: int | None = None
 
 
 class WorkerConfig(BaseSettings):
