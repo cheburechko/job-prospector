@@ -2,3 +2,4 @@
 .terraform
 .secrets
 __pycache__
+.manual_test
