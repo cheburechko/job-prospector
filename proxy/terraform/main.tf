@@ -57,8 +57,9 @@ module "ecs" {
 
   services = {
     simple-proxy = {
-      cpu    = 512
-      memory = 1024
+      assign_public_ip = true
+      cpu              = 512
+      memory           = 1024
 
       autoscaling_min_capacity = 1
       autoscaling_max_capacity = 4
@@ -144,7 +145,7 @@ module "ecs" {
         resource.aws_secretsmanager_secret.creds.arn,
       ]
 
-      subnet_ids                    = module.vpc.private_subnets
+      subnet_ids                    = module.vpc.public_subnets
       vpc_id                        = module.vpc.vpc_id
       availability_zone_rebalancing = "ENABLED"
       security_group_ingress_rules = {
@@ -154,6 +155,13 @@ module "ecs" {
           description                  = "Service port"
           referenced_security_group_id = module.nlb.security_group_id
           ip_protocol                  = "tcp"
+        }
+        vpc_https = {
+          description = "VPC https"
+          ip_protocol = "tcp"
+          cidr_ipv4   = module.vpc.vpc_cidr_block
+          from_port   = local.https_port
+          to_port     = local.https_port
         }
       }
       security_group_egress_rules = {
@@ -198,6 +206,8 @@ module "nlb" {
       cidr_ipv4   = module.vpc.vpc_cidr_block
     }
   }
+
+  enable_deletion_protection = false
 
   listeners = {
     https = {
@@ -247,27 +257,10 @@ module "vpc" {
   name = local.name
   cidr = local.vpc_cidr
 
-  azs             = local.azs
-  private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
-  public_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 48)]
-
-  enable_nat_gateway = true
-  single_nat_gateway = true
+  azs            = local.azs
+  public_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 48)]
 
   tags = local.tags
-}
-
-import {
-  to = aws_secretsmanager_secret.creds
-  id = local.secret_creds
-}
-
-import {
-  to = aws_secretsmanager_secret_version.creds
-  identity = {
-    secret_id  = local.secret_creds
-    version_id = "ad496269-3fd3-49ea-b4d4-59845b05279d"
-  }
 }
 
 ephemeral "aws_secretsmanager_random_password" "password" {
