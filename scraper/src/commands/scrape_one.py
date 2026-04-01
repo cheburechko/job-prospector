@@ -10,7 +10,7 @@ from models.config import DynamoDbConfig, ProxyConfig, ScraperConfig
 
 
 class ScrapeOneConfig(BaseSettings):
-    model_config = {"env_prefix": "SCRAPER_"}
+    model_config = {"env_prefix": "SCRAPER_", "env_file": ".env"}
 
     input: str | None = None
     company: str | None = None
