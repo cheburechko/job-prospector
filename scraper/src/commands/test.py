@@ -1,9 +1,24 @@
 import json
 import logging
 
+from pydantic_settings import BaseSettings
+
 from template.scraper import Scraper
 from models.company import Company
-from models.config import TestConfig
+from models.config import ProxyConfig, ScraperConfig
+
+
+class TestConfig(BaseSettings):
+    __test__ = False
+
+    model_config = {"env_prefix": "SCRAPER_"}
+
+    input: str
+    output: str = "out.json"
+    proxy: ProxyConfig = ProxyConfig()
+    scraper: ScraperConfig = ScraperConfig()
+    limit: int | None = None
+
 
 logger = logging.getLogger(__name__)
 

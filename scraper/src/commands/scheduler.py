@@ -1,8 +1,18 @@
 import logging
 
+from pydantic_settings import BaseSettings
+
 from dynamodb_storage import DynamoDbStorage
-from models.config import SchedulerConfig
+from models.config import DynamoDbConfig, SqsConfig
 from sqs_queue import SqsQueue
+
+
+class SchedulerConfig(BaseSettings):
+    model_config = {"env_prefix": "SCRAPER_"}
+
+    dynamodb: DynamoDbConfig = DynamoDbConfig()
+    sqs: SqsConfig = SqsConfig()
+
 
 logger = logging.getLogger(__name__)
 

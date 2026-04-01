@@ -1,10 +1,23 @@
 import asyncio
 import logging
 
+from pydantic_settings import BaseSettings
+
 from template.scraper import Scraper
 from dynamodb_storage import DynamoDbStorage
-from models.config import WorkerConfig
+from models.config import DynamoDbConfig, ProxyConfig, ScraperConfig, SqsConfig
 from sqs_queue import QueueMessage, SqsQueue
+
+
+class WorkerConfig(BaseSettings):
+    model_config = {"env_prefix": "SCRAPER_"}
+
+    proxy: ProxyConfig = ProxyConfig()
+    dynamodb: DynamoDbConfig = DynamoDbConfig()
+    sqs: SqsConfig = SqsConfig()
+    scraper: ScraperConfig = ScraperConfig()
+    max_concurrency: int = 5
+
 
 logger = logging.getLogger(__name__)
 

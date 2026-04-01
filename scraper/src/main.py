@@ -4,10 +4,9 @@ import logging
 from pydantic import BaseModel
 from pydantic_settings import CliApp, CliSubCommand
 
-from commands.scheduler import run_scheduler
-from commands.test import run_test
-from commands.worker import run_worker
-from models.config import WorkerConfig, SchedulerConfig, TestConfig
+from commands.scheduler import SchedulerConfig, run_scheduler
+from commands.test import TestConfig, run_test
+from commands.worker import WorkerConfig, run_worker
 
 
 class Worker(WorkerConfig):

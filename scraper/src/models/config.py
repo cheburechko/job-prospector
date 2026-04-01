@@ -37,33 +37,6 @@ class SqsConfig(BaseSettings):
     max_messages: int = 10
 
 
-class SchedulerConfig(BaseSettings):
-    model_config = {"env_prefix": "SCRAPER_"}
-
-    dynamodb: DynamoDbConfig = DynamoDbConfig()
-    sqs: SqsConfig = SqsConfig()
-
-
 class ScraperConfig(BaseSettings):
     rps: float = 2.0
     timeout: int = 5000
-
-
-class TestConfig(BaseSettings):
-    model_config = {"env_prefix": "SCRAPER_"}
-
-    input: str
-    output: str = "out.json"
-    proxy: ProxyConfig = ProxyConfig()
-    scraper: ScraperConfig = ScraperConfig()
-    limit: int | None = None
-
-
-class WorkerConfig(BaseSettings):
-    model_config = {"env_prefix": "SCRAPER_"}
-
-    proxy: ProxyConfig = ProxyConfig()
-    dynamodb: DynamoDbConfig = DynamoDbConfig()
-    sqs: SqsConfig = SqsConfig()
-    scraper: ScraperConfig = ScraperConfig()
-    max_concurrency: int = 5

@@ -3,7 +3,7 @@ import json
 import pytest
 
 from commands.test import run_test
-from models.config import TestConfig
+from commands.test import TestConfig
 from test.conftest import ALL_JOBS, run_mock_server
 
 pytestmark = pytest.mark.asyncio
