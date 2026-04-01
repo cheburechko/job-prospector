@@ -28,12 +28,9 @@ JOB_SCENARIO = JobPageScenario(
 async def test_collect_job_urls(mock_server, browser_context, rate_limiter):
     engine = ScrapingEngine(browser_context, rate_limiter)
     urls = await engine._collect_job_urls(f"{mock_server}/careers/", CAREERS_SCENARIO)
-    assert len(urls) > 0
-    # All URLs should point to the mock server
-    for url in urls:
-        assert mock_server in url
-    # First job should be Software Engineer
-    assert "/careers/jobs/1001" in urls[0]
+    assert {
+        f"{mock_server}/careers/jobs/{job_id}" for job_id in ("1001", "1002", "1003")
+    } == urls
 
 
 async def test_scrape_job(mock_server, browser_context, rate_limiter):
@@ -71,8 +68,7 @@ async def test_collect_job_urls_with_pagination(
     urls = await engine._collect_job_urls(
         f"{paginated_mock_server}/careers/", PAGINATED_CAREERS_SCENARIO
     )
-    assert len(urls) == 3
-    assert len(set(urls)) == 3, f"Duplicate URLs found: {urls}"
-    assert "/careers/jobs/1001" in urls[0]
-    assert "/careers/jobs/1002" in urls[1]
-    assert "/careers/jobs/1003" in urls[2]
+    assert {
+        f"{paginated_mock_server}/careers/jobs/{job_id}"
+        for job_id in ("1001", "1002", "1003")
+    } == urls
