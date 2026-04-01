@@ -1,5 +1,3 @@
 - Generalize AWS settings in configs
 - Pass data in tests with fixtures instead of imports
-- Extend visibility timeout for SQS tasks
 - Don't use service names in class naming?
-- Make scraping tasks reentrable

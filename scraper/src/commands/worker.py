@@ -49,6 +49,7 @@ async def process_message(
             len(result.deleted_urls),
         )
     finally:
+        msg.stop_heartbeat()
         semaphore.release()
 
 
@@ -65,7 +66,13 @@ async def run(storage: DynamoDbStorage, queue: SqsQueue, config: WorkerConfig):
                 for msg in messages:
                     await semaphore.acquire()
                     tg.create_task(
-                        process_message(msg, scraper, storage, queue, semaphore)
+                        process_message(
+                            msg,
+                            scraper,
+                            storage,
+                            queue,
+                            semaphore,
+                        )
                     )
 
 

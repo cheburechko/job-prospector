@@ -93,7 +93,10 @@ async def sqs_queue(elasticmq_container, monkeypatch):
         region_name=REGION,
         endpoint_url=endpoint_url,
     ) as client:
-        response = await client.create_queue(QueueName=QUEUE_NAME)
+        response = await client.create_queue(
+            QueueName=QUEUE_NAME,
+            Attributes={"VisibilityTimeout": "1"},
+        )
         queue_url = response["QueueUrl"]
 
         async with SqsQueue(
