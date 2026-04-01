@@ -75,6 +75,7 @@ class ScrapingEngine:
                 if disabled == scenario.next_page_disabled_value:
                     break
 
+                await self._limit_request()
                 await next_btn.click()
                 logger.info("Clicked next page: %s", page.url)
                 await page.wait_for_load_state("domcontentloaded")

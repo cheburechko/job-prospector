@@ -2,6 +2,4 @@
 - Pass data in tests with fixtures instead of imports
 - Extend visibility timeout for SQS tasks
 - Don't use service names in class naming?
-- Move command settings to commands
 - Make scraping tasks reentrable
-- Rate limit at browser scope
