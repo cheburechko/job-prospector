@@ -8,7 +8,7 @@ from sqs_queue import SqsQueue
 
 
 class ScheduleOneConfig(BaseSettings):
-    model_config = {"env_prefix": "SCRAPER_", "env_file": ".env"}
+    model_config = {"env_prefix": "SCRAPER_"}
 
     company: str
     dynamodb: DynamoDbConfig = DynamoDbConfig()

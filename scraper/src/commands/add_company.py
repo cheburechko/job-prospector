@@ -9,7 +9,7 @@ from models.config import DynamoDbConfig
 
 
 class AddCompanyConfig(BaseSettings):
-    model_config = {"env_prefix": "SCRAPER_", "env_file": ".env"}
+    model_config = {"env_prefix": "SCRAPER_"}
 
     input: str
     dynamodb: DynamoDbConfig = DynamoDbConfig()

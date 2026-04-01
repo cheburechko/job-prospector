@@ -4,3 +4,4 @@
 __pycache__
 .manual_test
 .claude/
+.env

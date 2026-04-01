@@ -1,6 +1,6 @@
-import asyncio
 import logging
 
+from dotenv import load_dotenv
 from pydantic import BaseModel
 from pydantic_settings import CliApp, CliSubCommand
 
@@ -12,28 +12,28 @@ from commands.worker import WorkerConfig, run_worker
 
 
 class Worker(WorkerConfig):
-    def cli_cmd(self) -> None:
-        asyncio.run(run_worker(self))
+    async def cli_cmd(self) -> None:
+        await run_worker(self)
 
 
 class Scheduler(SchedulerConfig):
-    def cli_cmd(self) -> None:
-        asyncio.run(run_scheduler(self))
+    async def cli_cmd(self) -> None:
+        await run_scheduler(self)
 
 
 class ScrapeOne(ScrapeOneConfig):
-    def cli_cmd(self) -> None:
-        asyncio.run(run_scrape_one(self))
+    async def cli_cmd(self) -> None:
+        await run_scrape_one(self)
 
 
 class AddCompany(AddCompanyConfig):
-    def cli_cmd(self) -> None:
-        asyncio.run(run_add_company(self))
+    async def cli_cmd(self) -> None:
+        await run_add_company(self)
 
 
 class ScheduleOne(ScheduleOneConfig):
-    def cli_cmd(self) -> None:
-        asyncio.run(run_schedule_one(self))
+    async def cli_cmd(self) -> None:
+        await run_schedule_one(self)
 
 
 class Cli(BaseModel):
@@ -48,6 +48,7 @@ class Cli(BaseModel):
 
 
 def main():
+    load_dotenv()
     logging.basicConfig(level=logging.INFO)
     CliApp.run(Cli)
 
