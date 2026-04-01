@@ -3,6 +3,12 @@ import urllib.parse
 from dataclasses import dataclass, field
 
 from playwright.async_api import BrowserContext
+from tenacity import (
+    before_sleep_log,
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from models.job import Job
 from models.scenario import CareersPageScenario, JobPageScenario
@@ -20,9 +26,21 @@ class ScrapeResult:
 
 
 class ScrapingEngine:
-    def __init__(self, context: BrowserContext, rate_limiter: Limiter):
+    def __init__(
+        self,
+        context: BrowserContext,
+        rate_limiter: Limiter,
+        max_retries: int = 3,
+        retry_base_delay: float = 1.0,
+    ):
         self.context = context
         self.rate_limiter = rate_limiter
+        self._retry_kwargs = dict(
+            wait=wait_exponential(multiplier=retry_base_delay),
+            stop=stop_after_attempt(max_retries),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            reraise=True,
+        )
 
     async def scrape_site(
         self,
@@ -33,13 +51,17 @@ class ScrapingEngine:
         limit: int = None,
         known_urls: set[str] = None,
     ) -> ScrapeResult:
-        urls = await self._collect_job_urls(url, careers, limit)
+        urls = await retry(**self._retry_kwargs)(self._collect_job_urls)(
+            url, careers, limit
+        )
         known_urls = known_urls or set()
         new_urls = urls - known_urls
         deleted_urls = list(known_urls - urls)
         jobs = []
         for job_url in new_urls:
-            job = await self._scrape_job(job_url, company, job_page)
+            job = await retry(**self._retry_kwargs)(self._scrape_job)(
+                job_url, company, job_page
+            )
             if job is not None:
                 jobs.append(job)
         return ScrapeResult(jobs=jobs, deleted_urls=deleted_urls)

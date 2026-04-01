@@ -12,6 +12,8 @@ class Scraper:
         self.proxy = proxy
         self.rps = scraper.rps
         self.timeout = scraper.timeout
+        self.max_retries = scraper.max_retries
+        self.retry_base_delay = scraper.retry_base_delay
 
     async def __aenter__(self):
         self._pw = await async_playwright().start()
@@ -40,7 +42,9 @@ class Scraper:
         rps = site.rps if site.rps is not None else self.rps
         bucket = InMemoryBucket([Rate(int(rps), Duration.SECOND)])
         limiter = Limiter(bucket)
-        engine = ScrapingEngine(self._context, limiter)
+        engine = ScrapingEngine(
+            self._context, limiter, self.max_retries, self.retry_base_delay
+        )
         return await engine.scrape_site(
             url=site.url,
             company=site.company,

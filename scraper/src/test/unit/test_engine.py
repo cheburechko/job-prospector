@@ -1,7 +1,9 @@
 import pytest
+import pytest_asyncio
 
 from models.scenario import CareersPageScenario, JobPageScenario
 from template.engine import ScrapeResult, ScrapingEngine
+from test.conftest import run_mock_server
 
 pytestmark = pytest.mark.asyncio
 
@@ -107,3 +109,39 @@ async def test_collect_job_urls_with_pagination(
         f"{paginated_mock_server}/careers/jobs/{job_id}"
         for job_id in ("1001", "1002", "1003")
     } == urls
+
+
+@pytest_asyncio.fixture
+async def flaky_mock_server():
+    async with run_mock_server(bind_host="127.0.0.1", fail_times=2) as base_url:
+        yield base_url
+
+
+async def test_scrape_site_retries_on_failure(
+    flaky_mock_server, browser_context, rate_limiter
+):
+    engine = ScrapingEngine(
+        browser_context, rate_limiter, max_retries=3, retry_base_delay=0.01
+    )
+    result = await engine.scrape_site(
+        url=f"{flaky_mock_server}/careers/",
+        company="Acme Corp",
+        careers=CAREERS_SCENARIO,
+        job_page=JOB_SCENARIO,
+    )
+    assert len(result.jobs) == 3
+
+
+async def test_scrape_site_fails_after_max_retries(
+    flaky_mock_server, browser_context, rate_limiter
+):
+    engine = ScrapingEngine(
+        browser_context, rate_limiter, max_retries=1, retry_base_delay=0.01
+    )
+    with pytest.raises(Exception):
+        await engine.scrape_site(
+            url=f"{flaky_mock_server}/careers/",
+            company="Acme Corp",
+            careers=CAREERS_SCENARIO,
+            job_page=JOB_SCENARIO,
+        )

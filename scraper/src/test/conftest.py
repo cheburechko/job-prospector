@@ -114,13 +114,16 @@ async def sqs_queue(elasticmq_container, monkeypatch):
 
 
 @asynccontextmanager
-async def run_mock_server(*, bind_host="127.0.0.1", url_host=None, page_size=None):
+async def run_mock_server(
+    *, bind_host="127.0.0.1", url_host=None, page_size=None, fail_times=0
+):
     """Start a mock job-board server.
 
     Args:
         bind_host: Interface to bind on (use "0.0.0.0" to expose to Docker).
         url_host: Hostname used in rendered URLs. Defaults to bind_host.
         page_size: When set, enables pagination with this many jobs per page.
+        fail_times: Number of initial requests that return 500 before succeeding.
     """
     if url_host is None:
         url_host = bind_host
@@ -132,6 +135,16 @@ async def run_mock_server(*, bind_host="127.0.0.1", url_host=None, page_size=Non
 
     app = web.Application()
     base_url_ref: list[str] = []
+    request_count = [0]
+
+    @web.middleware
+    async def fail_middleware(request, handler):
+        if request_count[0] < fail_times:
+            request_count[0] += 1
+            return web.Response(status=500, text="Internal Server Error")
+        return await handler(request)
+
+    app.middlewares.append(fail_middleware)
 
     async def handle_index(request):
         base_url = base_url_ref[0]

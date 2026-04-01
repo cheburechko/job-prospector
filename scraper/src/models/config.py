@@ -40,3 +40,5 @@ class SqsConfig(BaseSettings):
 class ScraperConfig(BaseSettings):
     rps: float = 2.0
     timeout: int = 5000
+    max_retries: int = 3
+    retry_base_delay: float = 1.0
