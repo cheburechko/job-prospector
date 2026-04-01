@@ -12,6 +12,8 @@ The service consists of two components and a test tool:
 - worker - listens for the scraping tasks on the queue
 - test - scrapes a single company from a local JSON config file and writes results to a JSON file
 
+### Scheduler
+- Launched as an ECS task Eventbridge scheduler
 
 ### Worker
 - It receives Company objects in JSON format from the queue. 
@@ -40,6 +42,7 @@ The service consists of two components and a test tool:
 - src/test/integraion/
 - src/test/unit/
 - src/main.py - CLI
+- terraform/ - AWS deployment config
 
 
 ### Scraping configs
