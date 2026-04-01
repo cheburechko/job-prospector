@@ -140,6 +140,7 @@ module "ecs" {
             { name = "SQS_QUEUE_URL", value = aws_sqs_queue.tasks.url },
             { name = "SQS_REGION", value = local.region },
             { name = "SCRAPER_MAX_CONCURRENCY", value = "1000" },
+            { name = "SCRAPER_RPS", value = "0.1" },
           ]
 
           memoryReservation = 256
