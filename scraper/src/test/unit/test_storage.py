@@ -41,6 +41,17 @@ class TestJobBatchWriter:
 
 
 class TestDynamoDbStorage:
+    async def test_get_company(self, dynamodb_storage, company):
+        async with dynamodb_storage.company_writer() as writer:
+            await writer.add(company)
+
+        result = await dynamodb_storage.get_company(company.company)
+        assert result == company
+
+    async def test_get_company_not_found(self, dynamodb_storage):
+        result = await dynamodb_storage.get_company("NonExistent")
+        assert result is None
+
     async def test_load_companies(self, dynamodb_storage, company):
         async with dynamodb_storage.company_writer() as writer:
             await writer.add(company)

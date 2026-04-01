@@ -6,7 +6,7 @@ from pydantic_settings import CliApp, CliSubCommand
 
 from commands.add_company import AddCompanyConfig, run_add_company
 from commands.scheduler import SchedulerConfig, run_scheduler
-from commands.test import TestConfig, run_test
+from commands.scrape_one import ScrapeOneConfig, run_scrape_one
 from commands.worker import WorkerConfig, run_worker
 
 
@@ -20,9 +20,9 @@ class Scheduler(SchedulerConfig):
         asyncio.run(run_scheduler(self))
 
 
-class Test(TestConfig):
+class ScrapeOne(ScrapeOneConfig):
     def cli_cmd(self) -> None:
-        asyncio.run(run_test(self))
+        asyncio.run(run_scrape_one(self))
 
 
 class AddCompany(AddCompanyConfig):
@@ -33,7 +33,7 @@ class AddCompany(AddCompanyConfig):
 class Cli(BaseModel):
     worker: CliSubCommand[Worker]
     scheduler: CliSubCommand[Scheduler]
-    test: CliSubCommand[Test]
+    scrape_one: CliSubCommand[ScrapeOne]
     add_company: CliSubCommand[AddCompany]
 
     def cli_cmd(self) -> None:

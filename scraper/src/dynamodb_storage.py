@@ -106,6 +106,13 @@ class DynamoDbStorage:
     def job_writer(self) -> JobBatchWriter:
         return JobBatchWriter(self.jobs_table)
 
+    async def get_company(self, company: str) -> Company | None:
+        response = await self.configs_table.get_item(Key={"company": company})
+        item = response.get("Item")
+        if item is None:
+            return None
+        return Company.from_dict(item)
+
     async def load_companies(self) -> list[Company]:
         items = await _paginate(self.configs_table.scan)
         return [Company.from_dict(item) for item in items]
