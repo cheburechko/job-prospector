@@ -1,5 +1,6 @@
 import logging
 import urllib.parse
+from dataclasses import dataclass, field
 
 from playwright.async_api import BrowserContext
 
@@ -10,6 +11,12 @@ from pyrate_limiter import Limiter
 REQUEST = "request"
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ScrapeResult:
+    jobs: list[Job] = field(default_factory=list)
+    deleted_urls: list[str] = field(default_factory=list)
 
 
 class ScrapingEngine:
@@ -24,14 +31,18 @@ class ScrapingEngine:
         careers: CareersPageScenario,
         job_page: JobPageScenario,
         limit: int = None,
-    ) -> list[Job]:
+        known_urls: set[str] = None,
+    ) -> ScrapeResult:
         urls = await self._collect_job_urls(url, careers, limit)
+        known_urls = known_urls or set()
+        new_urls = urls - known_urls
+        deleted_urls = list(known_urls - urls)
         jobs = []
-        for job_url in urls:
+        for job_url in new_urls:
             job = await self._scrape_job(job_url, company, job_page)
             if job is not None:
                 jobs.append(job)
-        return jobs
+        return ScrapeResult(jobs=jobs, deleted_urls=deleted_urls)
 
     async def _collect_job_urls(
         self, url: str, scenario: CareersPageScenario, limit: int = None

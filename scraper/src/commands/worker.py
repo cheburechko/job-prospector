@@ -31,11 +31,23 @@ async def process_message(
 ):
     try:
         logger.info("Scraping %s", msg.company.company)
-        jobs = await scraper.scrape(msg.company)
-        for job in jobs:
-            await storage.add_job(job)
+        known_urls = await storage.list_job_urls(msg.company.company)
+        result = await scraper.scrape(msg.company, known_urls=known_urls)
+        async with storage.job_writer() as writer:
+            await asyncio.gather(
+                *(writer.add(job) for job in result.jobs),
+                *(
+                    writer.delete(msg.company.company, url)
+                    for url in result.deleted_urls
+                ),
+            )
         await queue.delete_message(msg.receipt_handle)
-        logger.info("Scraped %s: %d jobs", msg.company.company, len(jobs))
+        logger.info(
+            "Scraped %s: %d new, %d deleted",
+            msg.company.company,
+            len(result.jobs),
+            len(result.deleted_urls),
+        )
     finally:
         semaphore.release()
 

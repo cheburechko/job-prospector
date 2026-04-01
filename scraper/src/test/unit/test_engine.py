@@ -1,7 +1,7 @@
 import pytest
 
 from models.scenario import CareersPageScenario, JobPageScenario
-from template.engine import ScrapingEngine
+from template.engine import ScrapeResult, ScrapingEngine
 
 pytestmark = pytest.mark.asyncio
 
@@ -48,17 +48,52 @@ async def test_scrape_job(mock_server, browser_context, rate_limiter):
 
 async def test_scrape_site_full(mock_server, browser_context, rate_limiter):
     engine = ScrapingEngine(browser_context, rate_limiter)
-    jobs = await engine.scrape_site(
+    result = await engine.scrape_site(
         url=f"{mock_server}/careers/",
         company="Acme Corp",
         careers=CAREERS_SCENARIO,
         job_page=JOB_SCENARIO,
     )
-    assert len(jobs) == 3
-    for job in jobs:
+    assert isinstance(result, ScrapeResult)
+    assert len(result.jobs) == 3
+    assert result.deleted_urls == []
+    for job in result.jobs:
         assert job.company == "Acme Corp"
-    titles = {job.title for job in jobs}
+    titles = {job.title for job in result.jobs}
     assert titles == {"Software Engineer", "Product Manager", "Data Analyst"}
+
+
+async def test_scrape_site_skips_known_urls(mock_server, browser_context, rate_limiter):
+    engine = ScrapingEngine(browser_context, rate_limiter)
+    known_urls = {f"{mock_server}/careers/jobs/1001"}
+    result = await engine.scrape_site(
+        url=f"{mock_server}/careers/",
+        company="Acme Corp",
+        careers=CAREERS_SCENARIO,
+        job_page=JOB_SCENARIO,
+        known_urls=known_urls,
+    )
+    assert len(result.jobs) == 2
+    assert result.deleted_urls == []
+    scraped_urls = {job.url for job in result.jobs}
+    assert f"{mock_server}/careers/jobs/1001" not in scraped_urls
+
+
+async def test_scrape_site_detects_deleted_urls(
+    mock_server, browser_context, rate_limiter
+):
+    engine = ScrapingEngine(browser_context, rate_limiter)
+    removed_url = f"{mock_server}/careers/jobs/9999"
+    known_urls = {f"{mock_server}/careers/jobs/1001", removed_url}
+    result = await engine.scrape_site(
+        url=f"{mock_server}/careers/",
+        company="Acme Corp",
+        careers=CAREERS_SCENARIO,
+        job_page=JOB_SCENARIO,
+        known_urls=known_urls,
+    )
+    assert len(result.jobs) == 2
+    assert result.deleted_urls == [removed_url]
 
 
 async def test_collect_job_urls_with_pagination(

@@ -3,7 +3,7 @@ from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
 
 from models.company import Company
 from models.config import ProxyConfig, ScraperConfig
-from models.job import Job
+from template.engine import ScrapeResult
 from template.engine import ScrapingEngine
 
 
@@ -34,7 +34,9 @@ class Scraper:
         await self._browser.close()
         await self._pw.stop()
 
-    async def scrape(self, site: Company, limit: int = None) -> list[Job]:
+    async def scrape(
+        self, site: Company, limit: int = None, known_urls: set[str] = None
+    ) -> ScrapeResult:
         rps = site.rps if site.rps is not None else self.rps
         bucket = InMemoryBucket([Rate(int(rps), Duration.SECOND)])
         limiter = Limiter(bucket)
@@ -45,4 +47,5 @@ class Scraper:
             careers=site.careers_page,
             job_page=site.job_page,
             limit=limit,
+            known_urls=known_urls,
         )

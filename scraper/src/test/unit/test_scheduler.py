@@ -6,8 +6,9 @@ class TestScheduler:
     async def test_sends_companies_to_queue(self, dynamodb_storage, sqs_queue):
         company1 = make_company(company="Acme", url="https://acme.com/jobs")
         company2 = make_company(company="Other", url="https://other.com/jobs")
-        await dynamodb_storage.add_company(company1)
-        await dynamodb_storage.add_company(company2)
+        async with dynamodb_storage.company_writer() as writer:
+            await writer.add(company1)
+            await writer.add(company2)
 
         await run(dynamodb_storage, sqs_queue)
 

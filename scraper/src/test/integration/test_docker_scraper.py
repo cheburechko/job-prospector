@@ -100,7 +100,8 @@ async def test_scraper_container(
     site_data = json.loads(fixtures_dir.joinpath("site.json").read_text())
     site_data["url"] = f"{base_url}/careers/"
     company = Company.from_dict(site_data)
-    await dynamodb_storage.add_company(company)
+    async with dynamodb_storage.company_writer() as writer:
+        await writer.add(company)
 
     scheduler = _make_container(
         docker_image, dynamodb_container, elasticmq_container

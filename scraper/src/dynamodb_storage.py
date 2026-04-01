@@ -22,6 +22,54 @@ JOBS_TABLE_SCHEMA = {
 }
 
 
+async def _paginate(operation, **kwargs) -> list[dict]:
+    items = []
+    while True:
+        response = await operation(**kwargs)
+        items.extend(response["Items"])
+        if "LastEvaluatedKey" not in response:
+            return items
+        kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+
+
+class CompanyBatchWriter:
+    def __init__(self, table):
+        self._table = table
+
+    async def __aenter__(self):
+        self._writer_ctx = self._table.batch_writer()
+        self._writer = await self._writer_ctx.__aenter__()
+        return self
+
+    async def __aexit__(self, *exc):
+        await self._writer_ctx.__aexit__(*exc)
+
+    async def add(self, company: Company) -> None:
+        await self._writer.put_item(Item=company.to_dict())
+
+    async def delete(self, company: str) -> None:
+        await self._writer.delete_item(Key={"company": company})
+
+
+class JobBatchWriter:
+    def __init__(self, table):
+        self._table = table
+
+    async def __aenter__(self):
+        self._writer_ctx = self._table.batch_writer()
+        self._writer = await self._writer_ctx.__aenter__()
+        return self
+
+    async def __aexit__(self, *exc):
+        await self._writer_ctx.__aexit__(*exc)
+
+    async def add(self, job: Job) -> None:
+        await self._writer.put_item(Item=job.to_dict())
+
+    async def delete(self, company: str, url: str) -> None:
+        await self._writer.delete_item(Key={"company": company, "url": url})
+
+
 class DynamoDbStorage:
     def __init__(self, config: DynamoDbConfig):
         self.config = config
@@ -52,24 +100,28 @@ class DynamoDbStorage:
             BillingMode="PAY_PER_REQUEST",
         )
 
+    def company_writer(self) -> CompanyBatchWriter:
+        return CompanyBatchWriter(self.configs_table)
+
+    def job_writer(self) -> JobBatchWriter:
+        return JobBatchWriter(self.jobs_table)
+
     async def load_companies(self) -> list[Company]:
-        response = await self.configs_table.scan()
-        return [Company.from_dict(item) for item in response["Items"]]
-
-    async def add_company(self, company: Company) -> None:
-        await self.configs_table.put_item(Item=company.to_dict())
-
-    async def delete_company(self, company: str) -> None:
-        await self.configs_table.delete_item(Key={"company": company})
-
-    async def add_job(self, job: Job) -> None:
-        await self.jobs_table.put_item(Item=job.to_dict())
-
-    async def delete_job(self, company: str, url: str) -> None:
-        await self.jobs_table.delete_item(Key={"company": company, "url": url})
+        items = await _paginate(self.configs_table.scan)
+        return [Company.from_dict(item) for item in items]
 
     async def list_jobs(self, company: str) -> list[Job]:
-        response = await self.jobs_table.query(
+        items = await _paginate(
+            self.jobs_table.query,
             KeyConditionExpression=Key("company").eq(company),
         )
-        return [Job.from_dict(item) for item in response["Items"]]
+        return [Job.from_dict(item) for item in items]
+
+    async def list_job_urls(self, company: str) -> set[str]:
+        items = await _paginate(
+            self.jobs_table.query,
+            KeyConditionExpression=Key("company").eq(company),
+            ProjectionExpression="#u",
+            ExpressionAttributeNames={"#u": "url"},
+        )
+        return {item["url"] for item in items}
