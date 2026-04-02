@@ -50,7 +50,6 @@ The service consists of two components and a test tool:
 In order to allow scarping many different websites, there should be a universal configurable abstraction for scraping websites, which should be implemented in a library located in scraper/template. The abstraction should provide two classes
 - CareersPageScenario
   - Contains css selectors for the jobs cards and the "pagination" buttons
-    - Pagination example: https://job-boards.greenhouse.io/wolt/
 - JobPageScenario
   - Contains css selectors to use to fill the fields of the Job object
   - There may be list of selectors to fill the same field
