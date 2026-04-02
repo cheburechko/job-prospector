@@ -41,214 +41,214 @@ locals {
 # Cluster
 ################################################################################
 
-module "ecs" {
-  source  = "terraform-aws-modules/ecs/aws"
-  version = "7.3.1"
+# module "ecs" {
+#   source  = "terraform-aws-modules/ecs/aws"
+#   version = "7.3.1"
 
-  cluster_name = local.name
+#   cluster_name = local.name
 
-  # Cluster capacity providers
-  cluster_capacity_providers = ["FARGATE_SPOT"]
-  default_capacity_provider_strategy = {
-    FARGATE_SPOT = {
-      weight = 100
-    }
-  }
+#   # Cluster capacity providers
+#   cluster_capacity_providers = ["FARGATE_SPOT"]
+#   default_capacity_provider_strategy = {
+#     FARGATE_SPOT = {
+#       weight = 100
+#     }
+#   }
 
-  services = {
-    simple-proxy = {
-      assign_public_ip = true
-      cpu              = 512
-      memory           = 1024
+#   services = {
+#     simple-proxy = {
+#       assign_public_ip = true
+#       cpu              = 512
+#       memory           = 1024
 
-      autoscaling_min_capacity = 1
-      autoscaling_max_capacity = 4
+#       autoscaling_min_capacity = 1
+#       autoscaling_max_capacity = 4
 
-      # Container definition(s)
-      container_definitions = {
-        (local.container_name) = {
-          cpu       = 512
-          memory    = 1024
-          essential = true
-          image     = "894608133151.dkr.ecr.eu-central-1.amazonaws.com/job-prospector/simple-proxy:latest"
+#       # Container definition(s)
+#       container_definitions = {
+#         (local.container_name) = {
+#           cpu       = 512
+#           memory    = 1024
+#           essential = true
+#           image     = "894608133151.dkr.ecr.eu-central-1.amazonaws.com/job-prospector/simple-proxy:latest"
 
-          readonlyRootFilesystem = false
+#           readonlyRootFilesystem = false
 
-          healthCheck = {
-            command = ["CMD-SHELL", "nc -vz localhost ${local.container_port} || exit 1"]
-          }
+#           healthCheck = {
+#             command = ["CMD-SHELL", "nc -vz localhost ${local.container_port} || exit 1"]
+#           }
 
-          environment = [
-            {
-              name  = "PORT"
-              value = local.container_port
-            }
-          ]
+#           environment = [
+#             {
+#               name  = "PORT"
+#               value = local.container_port
+#             }
+#           ]
 
-          secrets = [
-            {
-              name      = "CERT_BLOB"
-              valueFrom = local.secret_ssl_cert
-            },
-            {
-              name      = "CERT_CHAIN_BLOB"
-              valueFrom = local.secret_ssl_cert_chain
-            },
-            {
-              name      = "KEY_BLOB"
-              valueFrom = local.secret_ssl_key
-            },
-            {
-              name      = "USERNAME"
-              valueFrom = local.secret_creds_username
-            },
-            {
-              name      = "PASSWORD"
-              valueFrom = local.secret_creds_password
-            }
-          ]
+#           secrets = [
+#             {
+#               name      = "CERT_BLOB"
+#               valueFrom = local.secret_ssl_cert
+#             },
+#             {
+#               name      = "CERT_CHAIN_BLOB"
+#               valueFrom = local.secret_ssl_cert_chain
+#             },
+#             {
+#               name      = "KEY_BLOB"
+#               valueFrom = local.secret_ssl_key
+#             },
+#             {
+#               name      = "USERNAME"
+#               valueFrom = local.secret_creds_username
+#             },
+#             {
+#               name      = "PASSWORD"
+#               valueFrom = local.secret_creds_password
+#             }
+#           ]
 
-          portMappings = [
-            {
-              name          = local.container_name
-              containerPort = local.container_port
-              hostPort      = local.container_port
-              protocol      = "tcp"
-            }
-          ]
+#           portMappings = [
+#             {
+#               name          = local.container_name
+#               containerPort = local.container_port
+#               hostPort      = local.container_port
+#               protocol      = "tcp"
+#             }
+#           ]
 
-          memoryReservation = 100
+#           memoryReservation = 100
 
-          restartPolicy = {
-            enabled              = true
-            restartAttemptPeriod = 60
-          }
-        }
-      }
+#           restartPolicy = {
+#             enabled              = true
+#             restartAttemptPeriod = 60
+#           }
+#         }
+#       }
 
-      deployment_configuration = {
-        strategy = "ROLLING"
-      }
+#       deployment_configuration = {
+#         strategy = "ROLLING"
+#       }
 
-      load_balancer = {
-        service = {
-          target_group_arn = module.nlb.target_groups[local.target_group_name].arn
-          container_name   = local.container_name
-          container_port   = local.container_port
-        }
-      }
+#       load_balancer = {
+#         service = {
+#           target_group_arn = module.nlb.target_groups[local.target_group_name].arn
+#           container_name   = local.container_name
+#           container_port   = local.container_port
+#         }
+#       }
 
-      task_exec_secret_arns = [
-        local.secret_ssl_cert,
-        local.secret_ssl_cert_chain,
-        local.secret_ssl_key,
-        resource.aws_secretsmanager_secret.creds.arn,
-      ]
+#       task_exec_secret_arns = [
+#         local.secret_ssl_cert,
+#         local.secret_ssl_cert_chain,
+#         local.secret_ssl_key,
+#         resource.aws_secretsmanager_secret.creds.arn,
+#       ]
 
-      subnet_ids                    = module.vpc.public_subnets
-      vpc_id                        = module.vpc.vpc_id
-      availability_zone_rebalancing = "ENABLED"
-      security_group_ingress_rules = {
-        nlb = {
-          from_port                    = local.container_port
-          to_port                      = local.container_port
-          description                  = "Service port"
-          referenced_security_group_id = module.nlb.security_group_id
-          ip_protocol                  = "tcp"
-        }
-        vpc_https = {
-          description = "VPC https"
-          ip_protocol = "tcp"
-          cidr_ipv4   = module.vpc.vpc_cidr_block
-          from_port   = local.https_port
-          to_port     = local.https_port
-        }
-      }
-      security_group_egress_rules = {
-        all = {
-          cidr_ipv4   = "0.0.0.0/0"
-          ip_protocol = "-1"
-        }
-      }
-    }
-  }
+#       subnet_ids                    = module.vpc.public_subnets
+#       vpc_id                        = module.vpc.vpc_id
+#       availability_zone_rebalancing = "ENABLED"
+#       security_group_ingress_rules = {
+#         nlb = {
+#           from_port                    = local.container_port
+#           to_port                      = local.container_port
+#           description                  = "Service port"
+#           referenced_security_group_id = module.nlb.security_group_id
+#           ip_protocol                  = "tcp"
+#         }
+#         vpc_https = {
+#           description = "VPC https"
+#           ip_protocol = "tcp"
+#           cidr_ipv4   = module.vpc.vpc_cidr_block
+#           from_port   = local.https_port
+#           to_port     = local.https_port
+#         }
+#       }
+#       security_group_egress_rules = {
+#         all = {
+#           cidr_ipv4   = "0.0.0.0/0"
+#           ip_protocol = "-1"
+#         }
+#       }
+#     }
+#   }
 
-  tags = local.tags
-}
+#   tags = local.tags
+# }
 
 ################################################################################
 # Supporting Resources
 ################################################################################
 
-module "nlb" {
-  source  = "terraform-aws-modules/alb/aws"
-  version = "~> 10.0"
+# module "nlb" {
+#   source  = "terraform-aws-modules/alb/aws"
+#   version = "~> 10.0"
 
-  name = local.name
+#   name = local.name
 
-  load_balancer_type = "network"
+#   load_balancer_type = "network"
 
-  vpc_id  = module.vpc.vpc_id
-  subnets = module.vpc.public_subnets
+#   vpc_id  = module.vpc.vpc_id
+#   subnets = module.vpc.public_subnets
 
-  # Security Group
-  security_group_ingress_rules = {
-    all_https = {
-      from_port   = local.https_port
-      to_port     = local.https_port
-      ip_protocol = "tcp"
-      cidr_ipv4   = "0.0.0.0/0"
-    }
-  }
-  security_group_egress_rules = {
-    all = {
-      ip_protocol = "-1"
-      cidr_ipv4   = module.vpc.vpc_cidr_block
-    }
-  }
+#   # Security Group
+#   security_group_ingress_rules = {
+#     all_https = {
+#       from_port   = local.https_port
+#       to_port     = local.https_port
+#       ip_protocol = "tcp"
+#       cidr_ipv4   = "0.0.0.0/0"
+#     }
+#   }
+#   security_group_egress_rules = {
+#     all = {
+#       ip_protocol = "-1"
+#       cidr_ipv4   = module.vpc.vpc_cidr_block
+#     }
+#   }
 
-  enable_deletion_protection = false
+#   enable_deletion_protection = false
 
-  listeners = {
-    https = {
-      port     = 443
-      protocol = "TCP"
+#   listeners = {
+#     https = {
+#       port     = 443
+#       protocol = "TCP"
 
-      forward = {
-        target_group_key = local.target_group_name
-      }
-    }
-  }
+#       forward = {
+#         target_group_key = local.target_group_name
+#       }
+#     }
+#   }
 
-  target_groups = {
-    (local.target_group_name) = {
-      protocol    = "TCP"
-      port        = local.container_port
-      target_type = "ip"
+#   target_groups = {
+#     (local.target_group_name) = {
+#       protocol    = "TCP"
+#       port        = local.container_port
+#       target_type = "ip"
 
-      health_check = {
-        enabled           = true
-        healthy_threshold = 5
-        protocol          = "TCP"
-      }
+#       health_check = {
+#         enabled           = true
+#         healthy_threshold = 5
+#         protocol          = "TCP"
+#       }
 
-      create_attachment = false
-    }
-  }
-  tags = local.tags
-}
+#       create_attachment = false
+#     }
+#   }
+#   tags = local.tags
+# }
 
-resource "aws_route53_record" "proxy" {
-  zone_id = local.route53_zone_id
-  name    = "proxy.aws-is-the-best.com"
-  type    = "A"
+# resource "aws_route53_record" "proxy" {
+#   zone_id = local.route53_zone_id
+#   name    = "proxy.aws-is-the-best.com"
+#   type    = "A"
 
-  alias {
-    name                   = module.nlb.dns_name
-    zone_id                = module.nlb.zone_id
-    evaluate_target_health = true
-  }
-}
+#   alias {
+#     name                   = module.nlb.dns_name
+#     zone_id                = module.nlb.zone_id
+#     evaluate_target_health = true
+#   }
+# }
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
