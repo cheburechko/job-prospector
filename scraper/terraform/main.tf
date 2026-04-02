@@ -18,7 +18,7 @@ locals {
   name       = "scraper"
   account_id = data.aws_caller_identity.current.account_id
 
-  ecr_image = "${resource.aws_ecr_repository.scraper.repository_url}:latest"
+  ecr_image = "${resource.aws_ecr_repository.scraper.repository_url}:${var.image_tag}"
 
   vpc_id             = data.terraform_remote_state.proxy.outputs.vpc_id
   public_subnets     = data.terraform_remote_state.proxy.outputs.public_subnets
