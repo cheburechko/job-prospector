@@ -239,7 +239,7 @@ resource "aws_iam_role_policy" "gha_terraform" {
           "iam:ListRoleTags",
           "iam:PassRole",
         ]
-        Resource = "arn:aws:iam::${local.account_id}:role/*"
+        Resource = "*"
         Condition = {
           StringEquals = { "aws:ResourceTag/Name" = local.name }
         }
@@ -356,6 +356,7 @@ resource "aws_iam_role_policy" "gha_terraform" {
         Action = [
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams",
+          "logs:ListTagsForResource",
         ]
         Resource = "*"
       },
