@@ -39,7 +39,9 @@ def dynamodb_container():
     )
     with container:
         container.waiting_for(
-            LogMessageWaitStrategy("CorsParams").with_startup_timeout(30).with_poll_interval(0.1)
+            LogMessageWaitStrategy("CorsParams")
+            .with_startup_timeout(30)
+            .with_poll_interval(0.1)
         )
         yield container
 
@@ -51,7 +53,9 @@ def elasticmq_container():
     ).with_exposed_ports(ELASTICMQ_PORT)
     with container:
         container.waiting_for(
-            LogMessageWaitStrategy("started").with_startup_timeout(30).with_poll_interval(0.1)
+            LogMessageWaitStrategy("started")
+            .with_startup_timeout(30)
+            .with_poll_interval(0.1)
         )
         yield container
 
