@@ -12,5 +12,6 @@
     "title_selectors": ["h1.section-header", "meta[property=\"og:title\"]"],
     "location_selectors": [".job__location div", "meta[property=\"og:description\"]"],
     "description_selectors": [".job__description"]
-  }
+  },
+  "rps": 1000
 }

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 from dataclasses_json import dataclass_json
 
@@ -12,4 +13,4 @@ class Company:
     url: str
     careers_page: CareersPageScenario
     job_page: JobPageScenario
-    rps: float | None = None
+    rps: Decimal | None = None
