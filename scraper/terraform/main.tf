@@ -233,6 +233,7 @@ resource "aws_iam_role_policy" "gha_terraform" {
           "iam:ListAttachedRolePolicies",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
+          "iam:GetPolicy",
           "iam:TagRole",
           "iam:UntagRole",
           "iam:ListRoleTags",
@@ -336,19 +337,26 @@ resource "aws_iam_role_policy" "gha_terraform" {
         ]
         Resource = "arn:aws:cloudwatch:${local.region}:${local.account_id}:alarm:${local.name}-*"
       },
-      # CloudWatch logs (scraper-*)
+      # CloudWatch logs
       {
-        Sid    = "CloudWatchLogs"
+        Sid    = "CloudWatchLogsCreate"
         Effect = "Allow"
         Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
-          "logs:DescribeLogGroups",
-          "logs:DescribeLogStreams",
         ]
         Condition = {
           StringEquals = { "aws:ResourceTag/Name" = local.name }
         }
+        Resource = "*"
+      },
+      {
+        Sid    = "CloudWatchLogsDescribe"
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+        ]
         Resource = "*"
       },
 
