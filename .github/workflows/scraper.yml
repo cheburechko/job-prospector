@@ -61,20 +61,23 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     needs: [lint, test]
     runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.vars.outputs.sha }}
     steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v4
       - name: Compute short SHA
         id: vars
         run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::894608133151:role/scraper-gha-ecr-push"
+          role-to-assume: arn:aws:iam::894608133151:role/scraper-gha-ecr-push
           aws-region: eu-central-1
       - name: Login to Amazon ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -84,3 +87,49 @@ jobs:
           tags: ${{ steps.ecr.outputs.registry }}/job-prospector/scraper:${{ steps.vars.outputs.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  terraform-plan:
+    if: github.event_name == 'pull_request'
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scraper/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::894608133151:role/scraper-gha-terraform
+          aws-region: eu-central-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Terraform init
+        run: terraform init -input=false
+      - name: Terraform plan
+        run: terraform plan -input=false -no-color
+
+  terraform-apply:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: [push-image]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scraper/terraform
+    env:
+      TF_VAR_image_tag: ${{ needs.push-image.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::894608133151:role/scraper-gha-terraform
+          aws-region: eu-central-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Terraform init
+        run: terraform init -input=false
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve

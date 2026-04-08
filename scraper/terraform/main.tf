@@ -116,6 +116,275 @@ resource "aws_iam_role_policy" "ecr_push" {
 }
 
 ################################################################################
+# GitHub Actions OIDC -> Terraform apply role
+################################################################################
+
+resource "aws_iam_role" "gha_terraform" {
+  name = "${local.name}-gha-terraform"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.github.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
+          StringLike = {
+            "token.actions.githubusercontent.com:sub" = "repo:${local.github_repository}:*"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = local.tags
+}
+
+resource "aws_iam_role_policy" "gha_terraform" {
+  name = "${local.name}-gha-terraform"
+  role = aws_iam_role.gha_terraform.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # Terraform state backend (S3 with use_lockfile = true)
+      {
+        Sid    = "StateBucketList"
+        Effect = "Allow"
+        Action = ["s3:ListBucket"]
+        Resource = "arn:aws:s3:::aws-is-the-best-terraform-state"
+      },
+      {
+        Sid    = "StateScraperObjects"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+        ]
+        Resource = "arn:aws:s3:::aws-is-the-best-terraform-state/job-prospector/scraper/*"
+      },
+      {
+        Sid    = "StateProxyObjectsRead"
+        Effect = "Allow"
+        Action = ["s3:GetObject"]
+        Resource = "arn:aws:s3:::aws-is-the-best-terraform-state/job-prospector/proxy/*"
+      },
+
+      # ECR: manage the scraper repository
+      {
+        Sid      = "EcrAuth"
+        Effect   = "Allow"
+        Action   = "ecr:GetAuthorizationToken"
+        Resource = "*"
+      },
+      {
+        Sid    = "EcrRepo"
+        Effect = "Allow"
+        Action = [
+          "ecr:DescribeRepositories",
+          "ecr:ListTagsForResource",
+          "ecr:CreateRepository",
+          "ecr:DeleteRepository",
+          "ecr:PutImageScanningConfiguration",
+          "ecr:PutImageTagMutability",
+          "ecr:SetRepositoryPolicy",
+          "ecr:GetRepositoryPolicy",
+          "ecr:DeleteRepositoryPolicy",
+          "ecr:TagResource",
+          "ecr:UntagResource",
+          "ecr:BatchGetImage",
+          "ecr:DescribeImages",
+        ]
+        Resource = aws_ecr_repository.scraper.arn
+      },
+
+      # ECS: full management for the scraper cluster/services/task-definitions
+      {
+        Sid      = "Ecs"
+        Effect   = "Allow"
+        Action   = "ecs:*"
+        Resource = "*"
+        Condition = {
+          StringEquals = { "aws:RequestedRegion" = local.region }
+        }
+      },
+
+      # IAM: manage scraper-* roles and the GitHub OIDC provider
+      {
+        Sid    = "IamRoleManagement"
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:UpdateRole",
+          "iam:UpdateAssumeRolePolicy",
+          "iam:GetRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:TagRole",
+          "iam:UntagRole",
+          "iam:ListRoleTags",
+          "iam:PassRole",
+        ]
+        Resource = "arn:aws:iam::${local.account_id}:role/${local.name}-*"
+      },
+      {
+        Sid    = "IamOidcProvider"
+        Effect = "Allow"
+        Action = [
+          "iam:GetOpenIDConnectProvider",
+          "iam:ListOpenIDConnectProviders",
+          "iam:CreateOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:TagOpenIDConnectProvider",
+          "iam:UntagOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint",
+          "iam:AddClientIDToOpenIDConnectProvider",
+          "iam:RemoveClientIDFromOpenIDConnectProvider",
+        ]
+        Resource = "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
+      },
+
+      # DynamoDB: scraper tables
+      {
+        Sid    = "DynamoDb"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:CreateTable",
+          "dynamodb:DeleteTable",
+          "dynamodb:UpdateTable",
+          "dynamodb:DescribeTable",
+          "dynamodb:DescribeContinuousBackups",
+          "dynamodb:DescribeTimeToLive",
+          "dynamodb:ListTagsOfResource",
+          "dynamodb:TagResource",
+          "dynamodb:UntagResource",
+        ]
+        Resource = [
+          "arn:aws:dynamodb:${local.region}:${local.account_id}:table/scraper-site-configs",
+          "arn:aws:dynamodb:${local.region}:${local.account_id}:table/scraper-jobs",
+        ]
+      },
+
+      # SQS: scraper task queue
+      {
+        Sid    = "Sqs"
+        Effect = "Allow"
+        Action = [
+          "sqs:CreateQueue",
+          "sqs:DeleteQueue",
+          "sqs:GetQueueAttributes",
+          "sqs:SetQueueAttributes",
+          "sqs:GetQueueUrl",
+          "sqs:ListQueueTags",
+          "sqs:TagQueue",
+          "sqs:UntagQueue",
+        ]
+        Resource = "arn:aws:sqs:${local.region}:${local.account_id}:scraper-tasks"
+      },
+
+      # EventBridge Scheduler
+      {
+        Sid    = "Scheduler"
+        Effect = "Allow"
+        Action = [
+          "scheduler:CreateSchedule",
+          "scheduler:UpdateSchedule",
+          "scheduler:DeleteSchedule",
+          "scheduler:GetSchedule",
+          "scheduler:ListSchedules",
+          "scheduler:CreateScheduleGroup",
+          "scheduler:DeleteScheduleGroup",
+          "scheduler:GetScheduleGroup",
+          "scheduler:ListScheduleGroups",
+          "scheduler:TagResource",
+          "scheduler:UntagResource",
+          "scheduler:ListTagsForResource",
+        ]
+        Resource = [
+          "arn:aws:scheduler:${local.region}:${local.account_id}:schedule/scraper/*",
+          "arn:aws:scheduler:${local.region}:${local.account_id}:schedule-group/scraper",
+        ]
+      },
+
+      # CloudWatch alarms (scraper-*)
+      {
+        Sid    = "CloudWatch"
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricAlarm",
+          "cloudwatch:DeleteAlarms",
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource",
+          "cloudwatch:TagResource",
+          "cloudwatch:UntagResource",
+        ]
+        Resource = "arn:aws:cloudwatch:${local.region}:${local.account_id}:alarm:${local.name}-*"
+      },
+
+      # Application Autoscaling (no resource-level for most actions)
+      {
+        Sid      = "AppAutoscaling"
+        Effect   = "Allow"
+        Action   = "application-autoscaling:*"
+        Resource = "*"
+        Condition = {
+          StringEquals = { "aws:RequestedRegion" = local.region }
+        }
+      },
+
+      # EC2: VPC/subnet reads + security group management
+      {
+        Sid    = "Ec2"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSecurityGroupRules",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeAvailabilityZones",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+          "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = { "aws:RequestedRegion" = local.region }
+        }
+      },
+
+      # STS
+      {
+        Sid      = "Sts"
+        Effect   = "Allow"
+        Action   = "sts:GetCallerIdentity"
+        Resource = "*"
+      },
+    ]
+  })
+}
+
+################################################################################
 # DynamoDB
 ################################################################################
 
