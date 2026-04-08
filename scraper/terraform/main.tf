@@ -238,7 +238,10 @@ resource "aws_iam_role_policy" "gha_terraform" {
           "iam:ListRoleTags",
           "iam:PassRole",
         ]
-        Resource = "arn:aws:iam::${local.account_id}:role/${local.name}-*"
+        Resource = "arn:aws:iam::${local.account_id}:role/*"
+        Condition = {
+          StringEquals = { "aws:ResourceTag/Name" = local.name }
+        }
       },
       {
         Sid    = "IamOidcProvider"
@@ -332,6 +335,21 @@ resource "aws_iam_role_policy" "gha_terraform" {
           "cloudwatch:UntagResource",
         ]
         Resource = "arn:aws:cloudwatch:${local.region}:${local.account_id}:alarm:${local.name}-*"
+      },
+      # CloudWatch logs (scraper-*)
+      {
+        Sid    = "CloudWatchLogs"
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+        ]
+        Condition = {
+          StringEquals = { "aws:ResourceTag/Name" = local.name }
+        }
+        Resource = "*"
       },
 
       # Application Autoscaling (no resource-level for most actions)
