@@ -1,4 +1,4 @@
-name: Scraper Tests
+name: Scraper
 on:
   push:
     branches:
@@ -23,7 +23,7 @@ jobs:
       run:
         working-directory: scraper/src
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Run Ruff check
         uses: astral-sh/ruff-action@v3
       - name: Run Ruff format
@@ -37,8 +37,8 @@ jobs:
       run:
         working-directory: scraper
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           cache: pip
@@ -46,7 +46,7 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('scraper/requirements.txt') }}
@@ -64,12 +64,12 @@ jobs:
     outputs:
       sha: ${{ steps.vars.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Compute short SHA
         id: vars
         run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::894608133151:role/scraper-gha-ecr-push
           aws-region: eu-central-1
@@ -77,9 +77,9 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: scraper
           file: scraper/docker/Dockerfile
@@ -96,15 +96,15 @@ jobs:
       run:
         working-directory: scraper/terraform
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::894608133151:role/scraper-gha-terraform
           aws-region: eu-central-1
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.8
+          terraform_version: 1.14.8
       - name: Terraform init
         run: terraform init -input=false
       - name: Terraform plan
@@ -120,15 +120,15 @@ jobs:
     env:
       TF_VAR_image_tag: ${{ needs.push-image.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::894608133151:role/scraper-gha-terraform
           aws-region: eu-central-1
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: 1.9.8
+          terraform_version: 1.14.8
       - name: Terraform init
         run: terraform init -input=false
       - name: Terraform apply
