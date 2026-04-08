@@ -12,24 +12,26 @@ on:
       - '.github/workflows/scraper.yml'
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: scraper
-
 jobs:
   lint:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scraper/src
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Run Ruff check
+        uses: astral-sh/ruff-action@v3
+      - name: Run Ruff format
+        uses: astral-sh/ruff-action@v3
         with:
-          python-version: '3.13'
-      - run: pip install ruff
-      - run: ruff check .
-      - run: ruff format --check .
+          args: format --diff
 
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scraper
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -37,8 +39,15 @@ jobs:
           python-version: '3.13'
           cache: pip
           cache-dependency-path: scraper/requirements.txt
-      - run: pip install -r requirements.txt
-      - run: python -m playwright install --with-deps chromium
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('scraper/requirements.txt') }}
+      - name: Install Playwright dependencies
+        run: python -m playwright install --with-deps chromium
       - name: Run unit tests
         run: pytest src/test/unit -v
       - name: Run integration tests
