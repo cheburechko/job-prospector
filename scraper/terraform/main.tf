@@ -139,6 +139,15 @@ resource "aws_iam_role" "gha_terraform" {
             "token.actions.githubusercontent.com:sub" = "repo:${local.github_repository}:*"
           }
         }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:AssumeRole",
+        ]
+        Principal = {
+          "AWS" = "arn:aws:iam::${local.account_id}:user/admin"
+        }
       }
     ]
   })
@@ -221,28 +230,36 @@ resource "aws_iam_role_policy" "gha_terraform" {
         Sid    = "IamRoleManagement"
         Effect = "Allow"
         Action = [
-          "iam:GetRole",
           "iam:CreateRole",
           "iam:DeleteRole",
           "iam:UpdateRole",
           "iam:UpdateAssumeRolePolicy",
-          "iam:GetRolePolicy",
           "iam:PutRolePolicy",
           "iam:DeleteRolePolicy",
-          "iam:ListRolePolicies",
-          "iam:ListAttachedRolePolicies",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
-          "iam:GetPolicy",
           "iam:TagRole",
           "iam:UntagRole",
-          "iam:ListRoleTags",
           "iam:PassRole",
         ]
         Resource = "*"
         Condition = {
           StringEquals = { "aws:ResourceTag/Name" = local.name }
         }
+      },
+      {
+        Sid    = "IamRoleManagementRead"
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:GetPolicy",
+          "iam:GetPolicyVersion",
+          "iam:ListRoleTags",
+        ]
+        Resource = "*"
       },
       {
         Sid    = "IamOidcProvider"
