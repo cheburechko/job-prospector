@@ -12,6 +12,10 @@ on:
       - '.github/workflows/scraper.yml'
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -52,3 +56,31 @@ jobs:
         run: pytest src/test/unit -v
       - name: Run integration tests
         run: pytest src/test/integration -v -m integration
+
+  push-image:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Compute short SHA
+        id: vars
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::894608133151:role/scraper-gha-ecr-push"
+          aws-region: eu-central-1
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: scraper
+          file: scraper/docker/Dockerfile
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/job-prospector/scraper:${{ steps.vars.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

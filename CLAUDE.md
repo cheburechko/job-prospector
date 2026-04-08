@@ -5,6 +5,10 @@
 
 Read design.md file in these folders to understand specifics
 
+### Github actions checklists
+- After all edits are done:
+  - `act -W '.github/workflows/{file}.yml` - test changes to github workflow locally
+
 ### Scraper checklists
 - After the task is finished check for duplicated code in the project, deduplicate it.
 - Tests should be thorough and check all of the output, but asserts should be kept concise. Use object comparison, add comparison methods to tested code if needed.
