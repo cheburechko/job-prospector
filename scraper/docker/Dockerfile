@@ -1,11 +1,16 @@
 FROM python:3.13-slim
 
-WORKDIR /app
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN playwright install --with-deps chromium
+RUN playwright install-deps chromium
+
+RUN groupadd -r scraper && useradd --no-log-init -r -g scraper scraper --home-dir /app
+USER scraper
+
+WORKDIR /app
+
+RUN playwright install chromium
 
 COPY src/ src/
 

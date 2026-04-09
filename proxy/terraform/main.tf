@@ -11,30 +11,30 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  region            = "eu-central-1"
-  name              = "simple-proxy"
-  target_group_name = local.name
+  region = "eu-central-1"
+  name   = "simple-proxy"
+  # target_group_name = local.name
 
   vpc_cidr = "10.0.0.0/16"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
 
-  container_name = "simple-proxy"
-  container_port = 3000
-  https_port     = 443
+  # container_name = "simple-proxy"
+  # container_port = 3000
+  # https_port     = 443
 
   tags = {
     name = local.name
   }
 
-  secret_arn_prefix     = "arn:aws:secretsmanager:eu-central-1:894608133151:secret"
-  secret_ssl_cert       = "${local.secret_arn_prefix}:prod/proxy/ssl/cert-GT92t4"
-  secret_ssl_cert_chain = "${local.secret_arn_prefix}:prod/proxy/ssl/cert-chain-kXogL4"
-  secret_ssl_key        = "${local.secret_arn_prefix}:prod/proxy/ssl/key-MQGLq7"
-  secret_creds          = "${local.secret_arn_prefix}:proxy/creds-C2zEWe"
-  secret_creds_username = "${resource.aws_secretsmanager_secret.creds.arn}:username:AWSCURRENT:${resource.aws_secretsmanager_secret_version.creds.version_id}"
-  secret_creds_password = "${resource.aws_secretsmanager_secret.creds.arn}:password:AWSCURRENT:${resource.aws_secretsmanager_secret_version.creds.version_id}"
+  # secret_arn_prefix     = "arn:aws:secretsmanager:eu-central-1:894608133151:secret"
+  # secret_ssl_cert       = "${local.secret_arn_prefix}:prod/proxy/ssl/cert-GT92t4"
+  # secret_ssl_cert_chain = "${local.secret_arn_prefix}:prod/proxy/ssl/cert-chain-kXogL4"
+  # secret_ssl_key        = "${local.secret_arn_prefix}:prod/proxy/ssl/key-MQGLq7"
+  # secret_creds          = "${local.secret_arn_prefix}:proxy/creds-C2zEWe"
+  # secret_creds_username = "${resource.aws_secretsmanager_secret.creds.arn}:username:AWSCURRENT:${resource.aws_secretsmanager_secret_version.creds.version_id}"
+  # secret_creds_password = "${resource.aws_secretsmanager_secret.creds.arn}:password:AWSCURRENT:${resource.aws_secretsmanager_secret_version.creds.version_id}"
 
-  route53_zone_id = "Z09770033CPYEFANHENOP"
+  # route53_zone_id = "Z09770033CPYEFANHENOP"
 }
 
 ################################################################################
@@ -250,6 +250,7 @@ locals {
 #   }
 # }
 
+#trivy:ignore:AWS-0178
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.0"
@@ -263,21 +264,21 @@ module "vpc" {
   tags = local.tags
 }
 
-ephemeral "aws_secretsmanager_random_password" "password" {
-  password_length     = 16
-  exclude_punctuation = true
-}
+# ephemeral "aws_secretsmanager_random_password" "password" {
+#   password_length     = 16
+#   exclude_punctuation = true
+# }
 
-resource "aws_secretsmanager_secret" "creds" {
-  description = "Credentials for authentication in proxy"
-  name        = "proxy/creds"
-}
+# resource "aws_secretsmanager_secret" "creds" {
+#   description = "Credentials for authentication in proxy"
+#   name        = "proxy/creds"
+# }
 
-resource "aws_secretsmanager_secret_version" "creds" {
-  secret_id = resource.aws_secretsmanager_secret.creds.arn
-  secret_string_wo = jsonencode({
-    username = "admin"
-    password = ephemeral.aws_secretsmanager_random_password.password.random_password
-  })
-  secret_string_wo_version = 1
-}
+# resource "aws_secretsmanager_secret_version" "creds" {
+#   secret_id = resource.aws_secretsmanager_secret.creds.arn
+#   secret_string_wo = jsonencode({
+#     username = "admin"
+#     password = ephemeral.aws_secretsmanager_random_password.password.random_password
+#   })
+#   secret_string_wo_version = 1
+# }

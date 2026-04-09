@@ -39,11 +39,11 @@ locals {
 
 resource "aws_ecr_repository" "scraper" {
   name                 = "job-prospector/scraper"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
   force_delete         = false
 
   image_scanning_configuration {
-    scan_on_push = false
+    scan_on_push = true
   }
 }
 
@@ -519,6 +519,7 @@ resource "aws_dynamodb_table" "jobs" {
 # SQS
 ################################################################################
 
+#trivy:ignore:AWS-0096
 resource "aws_sqs_queue" "tasks" {
   name                       = "scraper-tasks"
   visibility_timeout_seconds = 300
@@ -732,7 +733,6 @@ resource "aws_iam_role_policy" "scheduler_exec" {
           "ecr:BatchGetImage",
           "ecr:BatchCheckLayerAvailability"
         ]
-        Effect   = "Allow"
         Resource = "*"
       },
     ],
@@ -740,6 +740,8 @@ resource "aws_iam_role_policy" "scheduler_exec" {
   })
 }
 
+#trivy:ignore:AWS-0104
+#trivy:ignore:AWS-0099
 resource "aws_security_group" "vpc_https" {
   name   = "${local.name}-vpc-https"
   vpc_id = local.vpc_id
@@ -748,6 +750,7 @@ resource "aws_security_group" "vpc_https" {
     from_port   = local.https_port
     to_port     = local.https_port
     protocol    = "tcp"
+    description = "Allow HTTPS traffic to the scraper cluster from the VPC"
     cidr_blocks = [local.vpc_cidr_block]
   }
 
@@ -755,6 +758,7 @@ resource "aws_security_group" "vpc_https" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
+    description = "Allow all traffic out of the scraper cluster"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
