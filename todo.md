@@ -1,3 +1,3 @@
 - Pass data in tests with fixtures instead of imports
 - Don't use service names in class naming?
-- build automation
+- Separate role management from other infra?

@@ -47,6 +47,40 @@ resource "aws_ecr_repository" "scraper" {
   }
 }
 
+resource "aws_ecr_lifecycle_policy" "scraper" {
+  repository = aws_ecr_repository.scraper.name
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 20 tagged images"
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["sha-"]
+          countType     = "imageCountMoreThan"
+          countNumber   = 20
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 2
+        description  = "Delete untagged images after 1 day"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 1
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
 ################################################################################
 # GitHub Actions OIDC -> ECR push role
 ################################################################################
@@ -164,9 +198,9 @@ resource "aws_iam_role_policy" "gha_terraform" {
     Statement = [
       # Terraform state backend (S3 with use_lockfile = true)
       {
-        Sid    = "StateBucketList"
-        Effect = "Allow"
-        Action = ["s3:ListBucket"]
+        Sid      = "StateBucketList"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
         Resource = "arn:aws:s3:::aws-is-the-best-terraform-state"
       },
       {
@@ -180,9 +214,9 @@ resource "aws_iam_role_policy" "gha_terraform" {
         Resource = "arn:aws:s3:::aws-is-the-best-terraform-state/job-prospector/scraper/*"
       },
       {
-        Sid    = "StateProxyObjectsRead"
-        Effect = "Allow"
-        Action = ["s3:GetObject"]
+        Sid      = "StateProxyObjectsRead"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
         Resource = "arn:aws:s3:::aws-is-the-best-terraform-state/job-prospector/proxy/*"
       },
 
