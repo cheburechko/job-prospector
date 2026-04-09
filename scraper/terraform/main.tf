@@ -244,6 +244,9 @@ resource "aws_iam_role_policy" "gha_terraform" {
           "ecr:UntagResource",
           "ecr:BatchGetImage",
           "ecr:DescribeImages",
+          "ecr:PutLifecyclePolicy",
+          "ecr:GetLifecyclePolicy",
+          "ecr:DeleteLifecyclePolicy",
         ]
         Resource = aws_ecr_repository.scraper.arn
       },
