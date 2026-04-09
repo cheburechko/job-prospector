@@ -527,10 +527,10 @@ resource "aws_dynamodb_table" "jobs" {
 # SQS
 ################################################################################
 
-#trivy:ignore:AWS-0096
 resource "aws_sqs_queue" "tasks" {
   name                       = "scraper-tasks"
   visibility_timeout_seconds = 300
+  sqs_managed_sse_enabled    = true
 
   tags = local.tags
 }
