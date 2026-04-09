@@ -248,6 +248,20 @@ resource "aws_iam_role_policy" "gha_terraform" {
         }
       },
       {
+        Sid    = "IamRolePassing"
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole",
+        ]
+        Resource = [
+          module.ecs.services.worker.task_exec_iam_role_arn,
+          module.ecs.services.worker.tasks_iam_role_arn,
+          aws_iam_role.scheduler_exec.arn,
+          aws_iam_role.scheduler.arn,
+          aws_iam_role.scheduler_eventbridge.arn,
+        ]
+      },
+      {
         Sid    = "IamRoleManagementRead"
         Effect = "Allow"
         Action = [
