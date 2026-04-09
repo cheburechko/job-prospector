@@ -84,7 +84,7 @@ jobs:
           context: scraper
           file: scraper/docker/Dockerfile
           push: true
-          tags: ${{ steps.ecr.outputs.registry }}/job-prospector/scraper:$sha-{{ steps.vars.outputs.sha }}
+          tags: ${{ steps.ecr.outputs.registry }}/job-prospector/scraper:sha-${{ steps.vars.outputs.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
