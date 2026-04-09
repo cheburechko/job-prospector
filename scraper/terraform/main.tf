@@ -493,6 +493,10 @@ resource "aws_dynamodb_table" "site_configs" {
     type = "S"
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
   tags = local.tags
 }
 
@@ -510,6 +514,10 @@ resource "aws_dynamodb_table" "jobs" {
   attribute {
     name = "url"
     type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = true
   }
 
   tags = local.tags
